@@ -16,6 +16,60 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RESULTS_JSON = REPO_ROOT / "results.json"
+SCHEMA_JSON = REPO_ROOT / "schema" / "results.json"
+
+REQUIRED_RECORD_KEYS = {
+    "model", "target", "algorithm", "num_speculative_tokens",
+    "hf_last_modified", "evaluated_at", "gpus", "status", "metrics", "error",
+}
+REQUIRED_METRICS_KEYS = {"acceptance_length", "acceptance_at_pos", "num_drafts", "subsets"}
+REQUIRED_SUBSET_KEYS = {
+    "acceptance_length", "acceptance_at_pos", "num_drafts",
+    "num_draft_tokens", "num_accepted_tokens",
+}
+
+
+def validate_record(record: dict) -> None:
+    missing = REQUIRED_RECORD_KEYS - set(record)
+    if missing:
+        raise ValueError(f"record missing required keys: {missing}")
+
+    if record["status"] not in ("ok", "failed"):
+        raise ValueError(f"status must be 'ok' or 'failed', got {record['status']!r}")
+
+    metrics = record["metrics"]
+    if record["status"] == "failed":
+        if metrics is not None:
+            raise ValueError("metrics must be null when status is 'failed'")
+        return
+
+    if metrics is None:
+        raise ValueError("metrics must not be null when status is 'ok'")
+
+    missing_m = REQUIRED_METRICS_KEYS - set(metrics)
+    if missing_m:
+        raise ValueError(f"metrics missing required keys: {missing_m}")
+
+    if not isinstance(metrics["acceptance_at_pos"], list):
+        raise ValueError("metrics.acceptance_at_pos must be a list")
+    if not isinstance(metrics["subsets"], dict) or len(metrics["subsets"]) == 0:
+        raise ValueError("metrics.subsets must be a non-empty dict")
+
+    for name, subset in metrics["subsets"].items():
+        missing_s = REQUIRED_SUBSET_KEYS - set(subset)
+        if missing_s:
+            raise ValueError(f"subset {name!r} missing required keys: {missing_s}")
+
+    try:
+        import jsonschema
+        schema = json.loads(SCHEMA_JSON.read_text())
+        model_schema = schema["$defs"]["model"]
+        model_schema["$defs"] = schema["$defs"]
+        jsonschema.validate(record, model_schema)
+    except ImportError:
+        pass
+    except jsonschema.ValidationError as exc:
+        raise ValueError(f"schema validation failed: {exc.message}") from exc
 
 
 def parse_acceptance(raw_dir: Path) -> dict:
@@ -93,6 +147,8 @@ def main() -> None:
         if not args.raw_dir:
             ap.error("--raw-dir is required for --status ok")
         record["metrics"] = parse_acceptance(args.raw_dir)
+
+    validate_record(record)
 
     results = json.loads(RESULTS_JSON.read_text()) if RESULTS_JSON.exists() else {"models": []}
     models = [m for m in results.get("models", []) if m["model"] != record["model"]]

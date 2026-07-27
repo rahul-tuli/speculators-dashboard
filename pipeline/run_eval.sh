@@ -1,4 +1,5 @@
 #!/bin/bash
+# DEPRECATED: superseded by orchestrate.py — kept for backwards compatibility.
 # Drives one model evaluation end-to-end on the OpenShift cluster via devenv.
 #
 # Usage: run_eval.sh <pending-entry.json>

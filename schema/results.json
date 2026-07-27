@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Speculators Eval Results",
+  "type": "object",
+  "required": ["updated_at", "models"],
+  "properties": {
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "models": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/model" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "model": {
+      "type": "object",
+      "required": [
+        "model",
+        "target",
+        "algorithm",
+        "num_speculative_tokens",
+        "hf_last_modified",
+        "evaluated_at",
+        "gpus",
+        "status",
+        "metrics",
+        "error"
+      ],
+      "properties": {
+        "model": { "type": "string" },
+        "target": { "type": "string" },
+        "algorithm": { "type": "string" },
+        "num_speculative_tokens": { "type": "integer", "minimum": 1 },
+        "hf_last_modified": { "type": "string", "format": "date-time" },
+        "evaluated_at": { "type": "string", "format": "date-time" },
+        "gpus": { "type": "string" },
+        "status": { "type": "string", "enum": ["ok", "failed"] },
+        "metrics": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/metrics" }
+          ]
+        },
+        "error": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "acceptance_length",
+        "acceptance_at_pos",
+        "num_drafts",
+        "subsets"
+      ],
+      "properties": {
+        "acceptance_length": { "type": "number" },
+        "acceptance_at_pos": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 1
+        },
+        "num_drafts": { "type": "integer", "minimum": 0 },
+        "subsets": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/subset" },
+          "minProperties": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "subset": {
+      "type": "object",
+      "required": [
+        "acceptance_length",
+        "acceptance_at_pos",
+        "num_drafts",
+        "num_draft_tokens",
+        "num_accepted_tokens"
+      ],
+      "properties": {
+        "acceptance_length": { "type": "number" },
+        "acceptance_at_pos": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 1
+        },
+        "num_drafts": { "type": "integer", "minimum": 0 },
+        "num_draft_tokens": { "type": "integer", "minimum": 0 },
+        "num_accepted_tokens": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

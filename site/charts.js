@@ -8,6 +8,8 @@
 
 var Charts = {};
 
+var _instances = {};
+
 // ── Shared defaults ────────────────────────────────────────────
 
 var CHART_DEFAULTS = {
@@ -24,15 +26,15 @@ var CHART_DEFAULTS = {
  * Dispose any previous chart on the same container, then init a fresh one.
  * Returns the new ECharts instance (or null if the DOM node is missing).
  */
-function initChart(containerId, instances) {
-  if (instances[containerId]) {
-    instances[containerId].dispose();
-    delete instances[containerId];
+function initChart(containerId) {
+  if (_instances[containerId]) {
+    _instances[containerId].dispose();
+    delete _instances[containerId];
   }
   var dom = document.getElementById(containerId);
   if (!dom) return null;
   var chart = echarts.init(dom, "dark");
-  instances[containerId] = chart;
+  _instances[containerId] = chart;
   return chart;
 }
 
@@ -53,19 +55,40 @@ function mergeDefaults(option) {
   return option;
 }
 
+Charts.dispose = function (id) {
+  if (_instances[id]) {
+    _instances[id].dispose();
+    delete _instances[id];
+  }
+};
+
+Charts.disposeByPrefix = function (prefix) {
+  Object.keys(_instances).forEach(function (key) {
+    if (key.indexOf(prefix) === 0) {
+      Charts.dispose(key);
+    }
+  });
+};
+
+Charts.disposeAll = function () {
+  Object.keys(_instances).forEach(function (key) {
+    Charts.dispose(key);
+  });
+};
+
+Charts.resize = function () {
+  Object.keys(_instances).forEach(function (key) {
+    if (_instances[key]) {
+      try { _instances[key].resize(); } catch (e) {}
+    }
+  });
+};
+
 // ── Chart 1: Algorithm Comparison — Grouped Bar ────────────────
 
-Charts.algoCompare = function (containerId, models, algoColors, algoOrder, hasThroughput, instances) {
-  var chart = initChart(containerId, instances);
+Charts.algoCompare = function (containerId, models, algoColors, algoOrder, hasThroughput) {
+  var chart = initChart(containerId);
   if (!chart) return;
-
-  // Update chart description text
-  var descEl = document.getElementById("chart-desc");
-  if (descEl) {
-    descEl.textContent = hasThroughput
-      ? "Best throughput (tok/s) per algorithm on each target model"
-      : "Best acceptance length per algorithm on each target model";
-  }
 
   // Group: { target: { algo: bestValue } }
   var targetAlgo = {};
@@ -141,8 +164,8 @@ Charts.algoCompare = function (containerId, models, algoColors, algoOrder, hasTh
 
 // ── Chart 2: Detail Row — Subset Acceptance@pos Grouped Bar ────
 
-Charts.subsetPositions = function (containerId, model, instances) {
-  var chart = initChart(containerId, instances);
+Charts.subsetPositions = function (containerId, model) {
+  var chart = initChart(containerId);
   if (!chart) return;
 
   var subsets = model.metrics && model.metrics.subsets;

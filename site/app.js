@@ -3,7 +3,7 @@
 /* ============================================================
    Speculators Dashboard v2 — app.js
    Single-page, throughput-first layout.
-   Loaded after charts.js.
+   Loaded after data.js and charts.js.
    ============================================================ */
 
 // ── Section 1: Constants ───────────────────────────────────────
@@ -28,7 +28,6 @@ var state = {
   sortDir: "desc",
   filters: { target: "all", algorithm: "all", text: "" },
   expandedModel: null,
-  chartInstances: {},
   uniqueTargets: [],
   uniqueAlgorithms: [],
   hasThroughput: false,
@@ -41,17 +40,6 @@ function el(tag, className, text) {
   if (className) node.className = className;
   if (text !== undefined && text !== null) node.textContent = String(text);
   return node;
-}
-
-function cacheBust(url) {
-  return url + "?t=" + Date.now();
-}
-
-function fetchJson(url) {
-  return fetch(cacheBust(url), { cache: "no-store" }).then(function (res) {
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    return res.json();
-  });
 }
 
 function relativeDate(iso) {
@@ -76,18 +64,6 @@ function fmtDate(iso) {
   return new Date(t).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
-function shortName(modelId) {
-  if (!modelId || typeof modelId !== "string") return modelId || "—";
-  var idx = modelId.indexOf("/");
-  return idx >= 0 ? modelId.substring(idx + 1) : modelId;
-}
-
-function targetFamily(targetId) {
-  if (!targetId || typeof targetId !== "string") return targetId || "—";
-  var idx = targetId.indexOf("/");
-  return idx >= 0 ? targetId.substring(idx + 1) : targetId;
-}
-
 function hfLink(modelId) {
   if (!modelId || typeof modelId !== "string") return null;
   var a = el("a", "mono");
@@ -103,153 +79,12 @@ function algoClass(algo) {
   return map[(algo || "").toLowerCase()] || "badge-other";
 }
 
-function metricValue(m) {
-  return m && m.metrics && typeof m.metrics.acceptance_length === "number"
-    ? m.metrics.acceptance_length
-    : null;
-}
-
-function throughputValue(m) {
-  return m && m.metrics && typeof m.metrics.throughput_tps === "number"
-    ? m.metrics.throughput_tps
-    : null;
-}
-
-function speedupValue(m) {
-  return m && m.metrics && typeof m.metrics.speedup === "number"
-    ? m.metrics.speedup
-    : null;
-}
-
 function speedupClass(val) {
   if (val === null || val === undefined) return "";
   if (val >= 2) return "speedup-excellent";
   if (val >= 1.5) return "speedup-good";
   if (val >= 1.2) return "speedup-moderate";
   return "speedup-low";
-}
-
-// ── Section 4: Data Loading ────────────────────────────────────
-
-function loadData() {
-  return fetchJson(RESULTS_URL).then(
-    function (data) {
-      if (data && Array.isArray(data.models) && data.models.length > 0) {
-        return { data: data, isSample: false };
-      }
-      throw new Error("empty");
-    },
-    function () { throw new Error("fetch failed"); }
-  ).catch(function () {
-    return fetchJson(SAMPLE_URL).then(
-      function (data) { return { data: data, isSample: true }; },
-      function () { return { data: null, isSample: false }; }
-    );
-  });
-}
-
-function processData(models) {
-  var targets = {};
-  var algos = {};
-  var anyThroughput = false;
-
-  models.forEach(function (m) {
-    if (m.target) targets[m.target] = true;
-    if (m.algorithm) algos[m.algorithm] = true;
-
-    // Pre-compute display values
-    m._shortName = shortName(m.model);
-    m._targetFamily = targetFamily(m.target);
-    m._acceptanceLength = metricValue(m);
-    m._throughput = throughputValue(m);
-    m._speedup = speedupValue(m);
-
-    if (m._throughput !== null) anyThroughput = true;
-  });
-
-  state.uniqueTargets = Object.keys(targets).sort();
-  state.uniqueAlgorithms = Object.keys(algos).sort();
-  state.hasThroughput = anyThroughput;
-}
-
-// ── Section 5: Filtering ───────────────────────────────────────
-
-function applyFilters() {
-  var f = state.filters;
-  state.filtered = state.raw.filter(function (m) {
-    if (f.target !== "all" && m.target !== f.target) return false;
-    if (f.algorithm !== "all" && m.algorithm !== f.algorithm) return false;
-    if (f.text) {
-      var q = f.text.toLowerCase();
-      var match = [m.model, m.target, m.algorithm].some(function (v) {
-        return v && String(v).toLowerCase().indexOf(q) >= 0;
-      });
-      if (!match) return false;
-    }
-    return true;
-  });
-}
-
-// ── Section 6: Sorting ────────────────────────────────────────
-
-function applySorting() {
-  var key = state.sortKey;
-  var dir = state.sortDir;
-
-  state.filtered.sort(function (a, b) {
-    // Failed entries always last
-    var af = a.status === "failed" ? 1 : 0;
-    var bf = b.status === "failed" ? 1 : 0;
-    if (af !== bf) return af - bf;
-
-    var sign = dir === "asc" ? 1 : -1;
-    var av, bv, cmp;
-
-    if (key === "model") {
-      av = a.model || "";
-      bv = b.model || "";
-      cmp = String(av).localeCompare(String(bv)) * sign;
-    } else if (key === "target") {
-      av = a.target || "";
-      bv = b.target || "";
-      cmp = String(av).localeCompare(String(bv)) * sign;
-    } else if (key === "gpus") {
-      av = a.gpus || "";
-      bv = b.gpus || "";
-      cmp = String(av).localeCompare(String(bv)) * sign;
-    } else if (key === "throughput_tps") {
-      av = a._throughput;
-      bv = b._throughput;
-      cmp = compareNumeric(av, bv, sign);
-    } else if (key === "speedup") {
-      av = a._speedup;
-      bv = b._speedup;
-      cmp = compareNumeric(av, bv, sign);
-    } else if (key === "acceptance_length") {
-      av = a._acceptanceLength;
-      bv = b._acceptanceLength;
-      cmp = compareNumeric(av, bv, sign);
-    } else if (key === "evaluated_at") {
-      av = Date.parse(a.evaluated_at || "") || null;
-      bv = Date.parse(b.evaluated_at || "") || null;
-      cmp = compareNumeric(av, bv, sign);
-    } else {
-      cmp = 0;
-    }
-
-    // Tiebreak by model name
-    if (cmp === 0) cmp = String(a.model || "").localeCompare(String(b.model || ""));
-    return cmp;
-  });
-}
-
-function compareNumeric(av, bv, sign) {
-  var aMiss = av === null || av === undefined || (typeof av === "number" && isNaN(av));
-  var bMiss = bv === null || bv === undefined || (typeof bv === "number" && isNaN(bv));
-  if (aMiss && bMiss) return 0;
-  if (aMiss) return 1;   // nulls always last
-  if (bMiss) return -1;
-  return (av - bv) * sign;
 }
 
 // ── Section 7: (Hero is now static HTML — no dynamic rendering needed) ──
@@ -271,20 +106,20 @@ function renderStats() {
     var best = null;
     var bestModel = null;
     ok.forEach(function (m) {
-      var s = speedupValue(m);
+      var s = Data.speedupValue(m);
       if (s !== null && (best === null || s > best)) { best = s; bestModel = m; }
     });
     if (statBestEl) statBestEl.textContent = best !== null ? best.toFixed(1) + "x" : "—";
-    if (statBestLabelEl) statBestLabelEl.textContent = bestModel ? shortName(bestModel.model) : "Best Speedup";
+    if (statBestLabelEl) statBestLabelEl.textContent = bestModel ? Data.shortName(bestModel.model) : "Best Speedup";
   } else {
     var bestAcc = null;
     var bestAccModel = null;
     ok.forEach(function (m) {
-      var v = metricValue(m);
+      var v = Data.metricValue(m);
       if (v !== null && (bestAcc === null || v > bestAcc)) { bestAcc = v; bestAccModel = m; }
     });
     if (statBestEl) statBestEl.textContent = bestAcc !== null ? bestAcc.toFixed(2) : "—";
-    if (statBestLabelEl) statBestLabelEl.textContent = bestAccModel ? shortName(bestAccModel.model) : "Best Accept. Len";
+    if (statBestLabelEl) statBestLabelEl.textContent = bestAccModel ? Data.shortName(bestAccModel.model) : "Best Accept. Len";
   }
 
   // Algorithms compared
@@ -302,7 +137,7 @@ function populateFilters() {
     state.uniqueTargets.forEach(function (t) {
       var opt = document.createElement("option");
       opt.value = t;
-      opt.textContent = targetFamily(t);
+      opt.textContent = Data.targetFamily(t);
       targetSel.appendChild(opt);
     });
   }
@@ -345,8 +180,8 @@ function setupFilterListeners() {
 }
 
 function onFilterChange() {
-  applyFilters();
-  applySorting();
+  state.filtered = Data.filter(state.raw, state.filters);
+  Data.sort(state.filtered, state.sortKey, state.sortDir);
   renderAll();
 }
 
@@ -384,12 +219,16 @@ function renderSortIndicators() {
 }
 
 function renderTable() {
-  // Dispose any existing detail chart instances before re-rendering
-  disposeDetailCharts();
+  Charts.disposeByPrefix("detail-");
 
   var tbody = document.getElementById("models-tbody");
   if (!tbody) return;
   tbody.textContent = "";
+
+  var thThroughput = document.querySelector('#models-table th[data-key="throughput_tps"]');
+  var thSpeedup = document.querySelector('#models-table th[data-key="speedup"]');
+  if (thThroughput) thThroughput.hidden = !state.hasThroughput;
+  if (thSpeedup) thSpeedup.hidden = !state.hasThroughput;
 
   var rows = state.filtered;
   var placeholder = document.getElementById("placeholder");
@@ -426,7 +265,7 @@ function modelRow(m) {
   var tr = el("tr", classes);
   tr.addEventListener("click", function () {
     if (state.expandedModel === m.model) {
-      disposeDetailChartsForModel(m.model);
+      Charts.dispose(detailContainerId(m.model, "pos"));
     }
     state.expandedModel = state.expandedModel === m.model ? null : m.model;
     renderTable();
@@ -456,27 +295,27 @@ function modelRow(m) {
   }
   tr.appendChild(tdTarget);
 
-  // 3. Throughput column
-  var tdThroughput = el("td", "col-metric");
-  if (m._throughput !== null) {
-    var tpVal = el("span", "throughput-value", Math.round(m._throughput).toLocaleString());
-    var tpUnit = el("span", "throughput-unit", "tok/s");
-    tdThroughput.appendChild(tpVal);
-    tdThroughput.appendChild(tpUnit);
-  } else {
-    tdThroughput.textContent = "—";
-  }
-  tr.appendChild(tdThroughput);
+  if (state.hasThroughput) {
+    var tdThroughput = el("td", "col-metric");
+    if (m._throughput !== null) {
+      var tpVal = el("span", "throughput-value", Math.round(m._throughput).toLocaleString());
+      var tpUnit = el("span", "throughput-unit", "tok/s");
+      tdThroughput.appendChild(tpVal);
+      tdThroughput.appendChild(tpUnit);
+    } else {
+      tdThroughput.textContent = "—";
+    }
+    tr.appendChild(tdThroughput);
 
-  // 4. Speedup column
-  var tdSpeedup = el("td", "col-metric");
-  if (m._speedup !== null) {
-    var sClass = "speedup-badge " + speedupClass(m._speedup);
-    tdSpeedup.appendChild(el("span", sClass, m._speedup.toFixed(1) + "x"));
-  } else {
-    tdSpeedup.textContent = "—";
+    var tdSpeedup = el("td", "col-metric");
+    if (m._speedup !== null) {
+      var sClass = "speedup-badge " + speedupClass(m._speedup);
+      tdSpeedup.appendChild(el("span", sClass, m._speedup.toFixed(1) + "x"));
+    } else {
+      tdSpeedup.textContent = "—";
+    }
+    tr.appendChild(tdSpeedup);
   }
-  tr.appendChild(tdSpeedup);
 
   // 5. Acceptance Length column
   var tdAcc = el("td", "col-metric");
@@ -500,7 +339,7 @@ function modelRow(m) {
 function detailRow(m) {
   var tr = el("tr", "detail-row");
   var td = el("td");
-  td.colSpan = 8;
+  td.colSpan = state.hasThroughput ? 8 : 6;
   var panel = el("div", "detail-panel");
 
   // Error text if failed
@@ -597,7 +436,7 @@ function detailRow(m) {
   // Render ECharts after the DOM nodes are attached
   if (hasSubsets) {
     setTimeout(function () {
-      Charts.subsetPositions(detailContainerId(m.model, "pos"), m, state.chartInstances);
+      Charts.subsetPositions(detailContainerId(m.model, "pos"), m);
     }, 0);
   }
 
@@ -618,7 +457,7 @@ function setupSortListeners() {
         state.sortKey = key;
         state.sortDir = (key === "model" || key === "target" || key === "gpus") ? "asc" : "desc";
       }
-      applySorting();
+      Data.sort(state.filtered, state.sortKey, state.sortDir);
       renderTable();
     });
   });
@@ -628,14 +467,19 @@ function setupSortListeners() {
 
 function renderChart() {
   var ok = state.filtered.filter(function (m) { return m.status === "ok"; });
+  var descEl = document.getElementById("chart-desc");
   if (ok.length === 0) {
     var dom = document.getElementById("chart-algo-compare");
     if (dom) dom.innerHTML = '<div class="placeholder">No data matches the current filters.</div>';
-    var descEl = document.getElementById("chart-desc");
     if (descEl) descEl.textContent = "";
     return;
   }
-  Charts.algoCompare("chart-algo-compare", ok, ALGO_COLORS, ALGO_ORDER, state.hasThroughput, state.chartInstances);
+  if (descEl) {
+    descEl.textContent = state.hasThroughput
+      ? "Best throughput (tok/s) per algorithm on each target model"
+      : "Best acceptance length per algorithm on each target model";
+  }
+  Charts.algoCompare("chart-algo-compare", ok, ALGO_COLORS, ALGO_ORDER, state.hasThroughput);
 }
 
 // ── Section 13: Render All ─────────────────────────────────────
@@ -646,47 +490,17 @@ function renderAll() {
   renderChart();
 }
 
-// ── Section 14: Chart Disposal Utilities ───────────────────────
-
-function disposeChart(id) {
-  if (state.chartInstances[id]) {
-    state.chartInstances[id].dispose();
-    delete state.chartInstances[id];
-  }
-}
-
-function disposeDetailCharts() {
-  Object.keys(state.chartInstances).forEach(function (key) {
-    if (key.indexOf("detail-") === 0) {
-      disposeChart(key);
-    }
-  });
-}
-
-function disposeDetailChartsForModel(modelId) {
-  var posId = detailContainerId(modelId, "pos");
-  disposeChart(posId);
-}
-
-// ── Section 15: Window Resize + Init ───────────────────────────
+// ── Section 14: Window Resize + Init ──────────────────────────
 
 window.addEventListener("resize", function () {
-  Object.keys(state.chartInstances).forEach(function (key) {
-    if (state.chartInstances[key]) {
-      try {
-        state.chartInstances[key].resize();
-      } catch (e) {
-        // Chart may have been disposed
-      }
-    }
-  });
+  Charts.resize();
 });
 
 function init() {
   setupFilterListeners();
   setupSortListeners();
 
-  loadData().then(function (result) {
+  Data.load(RESULTS_URL, SAMPLE_URL).then(function (result) {
     if (!result.data || !Array.isArray(result.data.models)) {
       var ph = document.getElementById("placeholder");
       if (ph) {
@@ -700,13 +514,15 @@ function init() {
     if (result.isSample && samplePill) samplePill.hidden = false;
 
     state.raw = result.data.models;
-    processData(state.raw);
+    var info = Data.process(state.raw);
+    state.uniqueTargets = info.uniqueTargets;
+    state.uniqueAlgorithms = info.uniqueAlgorithms;
+    state.hasThroughput = info.hasThroughput;
     populateFilters();
 
     var lastUpdatedEl = document.getElementById("last-updated");
     if (lastUpdatedEl) lastUpdatedEl.textContent = "Last updated: " + fmtDate(result.data.updated_at);
 
-    // Set default sort based on available data
     if (state.hasThroughput) {
       state.sortKey = "speedup";
     } else {
@@ -714,8 +530,8 @@ function init() {
     }
     state.sortDir = "desc";
 
-    applyFilters();
-    applySorting();
+    state.filtered = Data.filter(state.raw, state.filters);
+    Data.sort(state.filtered, state.sortKey, state.sortDir);
     renderAll();
   });
 }
