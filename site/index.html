@@ -4,47 +4,69 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Speculators Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="site-header">
-    <h1>Speculators Dashboard</h1>
-    <p class="tagline">Evaluation results for speculative-decoding draft models ("speculators").</p>
-    <p class="meta">
-      <span id="last-updated">Last updated: &mdash;</span>
-      &middot;
-      <a href="https://huggingface.co/collections/RedHatAI/speculator-models">HF collection</a>
-      &middot;
-      <a href="https://github.com/vllm-project/speculators">speculators repo</a>
-    </p>
+
+  <!-- Hero Header -->
+  <header class="hero">
+    <div class="hero-content">
+      <div class="hero-title-row">
+        <h1><span class="title-accent">Speculators</span> Dashboard</h1>
+        <span id="sample-pill" class="pill pill--warn" hidden>Sample Data</span>
+      </div>
+      <p class="hero-subtitle">Find the fastest speculative decoding drafter for your model</p>
+      <div class="hero-links">
+        <a href="https://huggingface.co/collections/RedHatAI/speculator-models" target="_blank" rel="noopener" class="hero-btn hero-btn--primary">Browse Models</a>
+        <a href="https://github.com/vllm-project/speculators" target="_blank" rel="noopener" class="hero-btn hero-btn--ghost">GitHub</a>
+      </div>
+      <div class="hero-meta">
+        <span id="last-updated">Last updated: —</span>
+      </div>
+    </div>
   </header>
 
-  <div id="sample-banner" class="sample-banner" hidden>showing sample data</div>
-
+  <!-- Stats Row: 3 cards -->
   <section class="stats" id="stats">
-    <div class="stat-card"><div class="stat-value" id="stat-total">&mdash;</div><div class="stat-label">Total models</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-ok">&mdash;</div><div class="stat-label">Evaluated OK</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-failed">&mdash;</div><div class="stat-label">Failed</div></div>
-    <div class="stat-card"><div class="stat-value" id="stat-mean">&mdash;</div><div class="stat-label">Mean accept. len</div></div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-models">—</div>
+      <div class="stat-label">Models Evaluated</div>
+    </div>
+    <div class="stat-card stat-card--accent">
+      <div class="stat-value" id="stat-best">—</div>
+      <div class="stat-label" id="stat-best-label">Best Speedup</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-algos">—</div>
+      <div class="stat-label">Algorithms Compared</div>
+    </div>
   </section>
 
-  <div class="controls">
-    <input type="search" id="filter" placeholder="Filter by model, target, or algorithm&hellip;">
+  <!-- Filter Bar -->
+  <div class="filters" id="filters">
+    <select id="filter-target" aria-label="Filter by target model">
+      <option value="all">All Targets</option>
+    </select>
+    <select id="filter-algorithm" aria-label="Filter by algorithm">
+      <option value="all">All Algorithms</option>
+    </select>
+    <input type="search" id="filter-text" placeholder="Search models..." aria-label="Search models">
   </div>
 
+  <!-- Main Table -->
   <div class="table-wrap">
     <table id="models-table">
       <thead>
         <tr>
-          <th data-key="model">Model</th>
+          <th data-key="model">Drafter</th>
           <th data-key="target">Target</th>
-          <th data-key="algorithm">Algorithm</th>
-          <th data-key="num_speculative_tokens">#Tok</th>
-          <th data-key="acceptance_length">Accept. Len</th>
+          <th data-key="throughput_tps" class="col-metric">Throughput</th>
+          <th data-key="speedup" class="col-metric">Speedup</th>
+          <th data-key="acceptance_length" class="col-metric">Accept. Len</th>
           <th data-key="acceptance_at_pos">Acceptance@pos</th>
-          <th data-key="evaluated_at">Evaluated</th>
           <th data-key="gpus">GPUs</th>
-          <th data-key="status">Status</th>
+          <th data-key="evaluated_at">Evaluated</th>
         </tr>
       </thead>
       <tbody id="models-tbody"></tbody>
@@ -52,10 +74,20 @@
     <div id="placeholder" class="placeholder" hidden></div>
   </div>
 
+  <!-- Algorithm Comparison Chart -->
+  <section class="chart-section">
+    <h2 class="section-title">Algorithm Comparison</h2>
+    <p class="section-desc" id="chart-desc">Average throughput by algorithm across target models</p>
+    <div id="chart-algo-compare" class="chart-container" style="height:400px"></div>
+  </section>
+
+  <!-- Footer -->
   <footer class="site-footer">
-    <span>Data source: <code>results.json</code></span>
+    Data source: <code>results.json</code> · Powered by <a href="https://github.com/vllm-project/speculators" target="_blank" rel="noopener">vllm-project/speculators</a>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script src="charts.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -1,75 +1,727 @@
 {
-  "updated_at": "2026-07-27T10:00:00Z",
+  "updated_at": "2025-07-25T14:30:00Z",
   "models": [
     {
-      "model": "RedHatAI/Qwen3-8B-speculator.eagle3",
+      "model": "RedHatAI/Qwen3-8B_speculators_eagle3_2l",
       "target": "Qwen/Qwen3-8B",
       "algorithm": "eagle3",
       "num_speculative_tokens": 3,
-      "hf_last_modified": "2026-04-08T12:25:55.000Z",
-      "evaluated_at": "2026-07-26T09:00:00Z",
+      "hf_last_modified": "2025-07-02T09:30:00Z",
+      "evaluated_at": "2025-07-10T14:20:00Z",
       "gpus": "1xa100",
       "status": "ok",
       "metrics": {
         "acceptance_length": 2.71,
-        "acceptance_at_pos": [0.83, 0.71, 0.55],
-        "num_drafts": 12345,
+        "acceptance_at_pos": [
+          0.82,
+          0.55,
+          0.34
+        ],
         "subsets": {
-          "HumanEval": {"acceptance_length": 2.8, "acceptance_at_pos": [0.85, 0.72, 0.57], "num_drafts": 6000, "num_draft_tokens": 18000, "num_accepted_tokens": 10800},
-          "qa": {"acceptance_length": 2.6, "acceptance_at_pos": [0.81, 0.69, 0.52], "num_drafts": 6345, "num_draft_tokens": 19000, "num_accepted_tokens": 10200}
-        }
+          "HumanEval": {
+            "acceptance_length": 2.65,
+            "num_drafts": 400,
+            "num_draft_tokens": 1200,
+            "num_accepted_tokens": 660,
+            "acceptance_at_pos": [
+              0.8,
+              0.53,
+              0.32
+            ],
+            "throughput_tps": 2089.5,
+            "baseline_tps": 1050,
+            "speedup": 1.99
+          },
+          "qa": {
+            "acceptance_length": 2.77,
+            "num_drafts": 400,
+            "num_draft_tokens": 1200,
+            "num_accepted_tokens": 708,
+            "acceptance_at_pos": [
+              0.84,
+              0.57,
+              0.36
+            ],
+            "throughput_tps": 2163.0,
+            "baseline_tps": 1050,
+            "speedup": 2.06
+          }
+        },
+        "throughput_tps": 2121.0,
+        "baseline_tps": 1050,
+        "speedup": 2.02
       },
       "error": null
     },
     {
-      "model": "RedHatAI/Llama-3.1-8B-Instruct-speculator.dflash",
+      "model": "RedHatAI/Qwen3-8B_speculators_dflash_2l",
+      "target": "Qwen/Qwen3-8B",
+      "algorithm": "dflash",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-03T11:15:00Z",
+      "evaluated_at": "2025-07-10T16:45:00Z",
+      "gpus": "1xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.55,
+        "acceptance_at_pos": [
+          0.72,
+          0.42,
+          0.25,
+          0.16
+        ],
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.49,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 596,
+            "acceptance_at_pos": [
+              0.7,
+              0.4,
+              0.23,
+              0.16
+            ],
+            "throughput_tps": 1984.5,
+            "baseline_tps": 1050,
+            "speedup": 1.89
+          },
+          "qa": {
+            "acceptance_length": 2.61,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 644,
+            "acceptance_at_pos": [
+              0.74,
+              0.44,
+              0.27,
+              0.16
+            ],
+            "throughput_tps": 2058.0,
+            "baseline_tps": 1050,
+            "speedup": 1.96
+          }
+        },
+        "throughput_tps": 2026.5,
+        "baseline_tps": 1050,
+        "speedup": 1.93
+      },
+      "error": null
+    },
+    {
+      "model": "RedHatAI/Qwen3-8B_speculators_mtp",
+      "target": "Qwen/Qwen3-8B",
+      "algorithm": "mtp",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-04T08:00:00Z",
+      "evaluated_at": "2025-07-11T09:30:00Z",
+      "gpus": "1xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.38,
+        "acceptance_at_pos": [
+          0.65,
+          0.38,
+          0.22,
+          0.13
+        ],
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.32,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 528,
+            "acceptance_at_pos": [
+              0.63,
+              0.36,
+              0.2,
+              0.13
+            ],
+            "throughput_tps": 1890.0,
+            "baseline_tps": 1050,
+            "speedup": 1.8
+          },
+          "qa": {
+            "acceptance_length": 2.44,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 576,
+            "acceptance_at_pos": [
+              0.67,
+              0.4,
+              0.24,
+              0.13
+            ],
+            "throughput_tps": 1963.5,
+            "baseline_tps": 1050,
+            "speedup": 1.87
+          }
+        },
+        "throughput_tps": 1921.5,
+        "baseline_tps": 1050,
+        "speedup": 1.83
+      },
+      "error": null
+    },
+    {
+      "model": "RedHatAI/Llama-3.1-8B-Instruct_speculators_eagle3_2l",
+      "target": "meta-llama/Llama-3.1-8B-Instruct",
+      "algorithm": "eagle3",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-05T14:45:00Z",
+      "evaluated_at": "2025-07-12T11:00:00Z",
+      "gpus": "1xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 3.12,
+        "acceptance_at_pos": [
+          0.88,
+          0.58,
+          0.38,
+          0.28
+        ],
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 3.04,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 816,
+            "acceptance_at_pos": [
+              0.86,
+              0.56,
+              0.36,
+              0.26
+            ],
+            "throughput_tps": 2165.8,
+            "baseline_tps": 980,
+            "speedup": 2.21
+          },
+          "qa": {
+            "acceptance_length": 3.2,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 880,
+            "acceptance_at_pos": [
+              0.9,
+              0.6,
+              0.4,
+              0.3
+            ],
+            "throughput_tps": 2263.8,
+            "baseline_tps": 980,
+            "speedup": 2.31
+          }
+        },
+        "throughput_tps": 2214.8,
+        "baseline_tps": 980,
+        "speedup": 2.26
+      },
+      "error": null
+    },
+    {
+      "model": "RedHatAI/Llama-3.1-8B-Instruct_speculators_dflash_2l",
       "target": "meta-llama/Llama-3.1-8B-Instruct",
       "algorithm": "dflash",
       "num_speculative_tokens": 5,
-      "hf_last_modified": "2026-05-14T08:10:22.000Z",
-      "evaluated_at": "2026-07-24T14:30:00Z",
+      "hf_last_modified": "2025-07-06T10:20:00Z",
+      "evaluated_at": "2025-07-13T08:15:00Z",
       "gpus": "1xa100",
       "status": "ok",
       "metrics": {
         "acceptance_length": 3.42,
-        "acceptance_at_pos": [0.88, 0.76, 0.64, 0.52, 0.41],
-        "num_drafts": 20500,
+        "acceptance_at_pos": [
+          0.89,
+          0.62,
+          0.42,
+          0.3,
+          0.19
+        ],
         "subsets": {
-          "HumanEval": {"acceptance_length": 3.55, "acceptance_at_pos": [0.9, 0.79, 0.68, 0.55, 0.44], "num_drafts": 10000, "num_draft_tokens": 50000, "num_accepted_tokens": 24000},
-          "qa": {"acceptance_length": 3.31, "acceptance_at_pos": [0.86, 0.74, 0.61, 0.5, 0.39], "num_drafts": 10500, "num_draft_tokens": 52500, "num_accepted_tokens": 23500}
-        }
+          "HumanEval": {
+            "acceptance_length": 3.34,
+            "num_drafts": 400,
+            "num_draft_tokens": 2000,
+            "num_accepted_tokens": 936,
+            "acceptance_at_pos": [
+              0.87,
+              0.6,
+              0.4,
+              0.28,
+              0.19
+            ],
+            "throughput_tps": 2342.2,
+            "baseline_tps": 980,
+            "speedup": 2.39
+          },
+          "qa": {
+            "acceptance_length": 3.5,
+            "num_drafts": 400,
+            "num_draft_tokens": 2000,
+            "num_accepted_tokens": 1000,
+            "acceptance_at_pos": [
+              0.91,
+              0.64,
+              0.44,
+              0.32,
+              0.19
+            ],
+            "throughput_tps": 2430.4,
+            "baseline_tps": 980,
+            "speedup": 2.48
+          }
+        },
+        "throughput_tps": 2381.4,
+        "baseline_tps": 980,
+        "speedup": 2.43
       },
       "error": null
     },
     {
-      "model": "RedHatAI/Mistral-7B-speculator.peagle",
-      "target": "mistralai/Mistral-7B-Instruct-v0.3",
+      "model": "RedHatAI/Llama-3.1-8B-Instruct_speculators_peagle_2l",
+      "target": "meta-llama/Llama-3.1-8B-Instruct",
       "algorithm": "peagle",
       "num_speculative_tokens": 4,
-      "hf_last_modified": "2026-06-02T17:44:10.000Z",
-      "evaluated_at": "2026-07-27T08:15:00Z",
+      "hf_last_modified": "2025-07-07T16:30:00Z",
+      "evaluated_at": "2025-07-14T10:45:00Z",
       "gpus": "1xa100",
-      "status": "failed",
-      "metrics": null,
-      "error": "RuntimeError: CUDA out of memory while loading target model (tried to allocate 14.2 GiB on device with 15.8 GiB free)"
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.89,
+        "acceptance_at_pos": [
+          0.8,
+          0.52,
+          0.34,
+          0.23
+        ],
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.83,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 732,
+            "acceptance_at_pos": [
+              0.78,
+              0.5,
+              0.32,
+              0.23
+            ],
+            "throughput_tps": 2048.2,
+            "baseline_tps": 980,
+            "speedup": 2.09
+          },
+          "qa": {
+            "acceptance_length": 2.95,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 780,
+            "acceptance_at_pos": [
+              0.82,
+              0.54,
+              0.36,
+              0.23
+            ],
+            "throughput_tps": 2116.8,
+            "baseline_tps": 980,
+            "speedup": 2.16
+          }
+        },
+        "throughput_tps": 2087.4,
+        "baseline_tps": 980,
+        "speedup": 2.13
+      },
+      "error": null
     },
     {
-      "model": "RedHatAI/Llama-3.3-70B-Instruct-speculator.eagle3",
+      "model": "RedHatAI/Llama-3.1-8B-Instruct_speculators_mtp",
+      "target": "meta-llama/Llama-3.1-8B-Instruct",
+      "algorithm": "mtp",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-08T09:00:00Z",
+      "evaluated_at": "2025-07-14T15:30:00Z",
+      "gpus": "1xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.95,
+        "acceptance_at_pos": [
+          0.82,
+          0.54,
+          0.35,
+          0.24
+        ],
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.89,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 756,
+            "acceptance_at_pos": [
+              0.8,
+              0.52,
+              0.34,
+              0.23
+            ],
+            "throughput_tps": 2087.4,
+            "baseline_tps": 980,
+            "speedup": 2.13
+          },
+          "qa": {
+            "acceptance_length": 3.01,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 804,
+            "acceptance_at_pos": [
+              0.84,
+              0.56,
+              0.36,
+              0.25
+            ],
+            "throughput_tps": 2156.0,
+            "baseline_tps": 980,
+            "speedup": 2.2
+          }
+        },
+        "throughput_tps": 2116.8,
+        "baseline_tps": 980,
+        "speedup": 2.16
+      },
+      "error": null
+    },
+    {
+      "model": "RedHatAI/Llama-3.3-70B-Instruct_speculators_eagle3_2l",
       "target": "meta-llama/Llama-3.3-70B-Instruct",
       "algorithm": "eagle3",
       "num_speculative_tokens": 4,
-      "hf_last_modified": "2026-03-21T11:05:47.000Z",
-      "evaluated_at": "2026-07-20T19:45:00Z",
+      "hf_last_modified": "2025-07-10T12:00:00Z",
+      "evaluated_at": "2025-07-16T09:00:00Z",
       "gpus": "4xh100",
       "status": "ok",
       "metrics": {
         "acceptance_length": 3.05,
-        "acceptance_at_pos": [0.86, 0.74, 0.6, 0.48],
-        "num_drafts": 18200,
+        "acceptance_at_pos": [
+          0.86,
+          0.56,
+          0.37,
+          0.26
+        ],
         "subsets": {
-          "HumanEval": {"acceptance_length": 3.2, "acceptance_at_pos": [0.89, 0.78, 0.64, 0.51], "num_drafts": 9000, "num_draft_tokens": 36000, "num_accepted_tokens": 19800},
-          "qa": {"acceptance_length": 2.9, "acceptance_at_pos": [0.83, 0.7, 0.56, 0.45], "num_drafts": 9200, "num_draft_tokens": 36800, "num_accepted_tokens": 18700}
-        }
+          "HumanEval": {
+            "acceptance_length": 2.97,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 788,
+            "acceptance_at_pos": [
+              0.84,
+              0.54,
+              0.35,
+              0.24
+            ],
+            "throughput_tps": 911.4,
+            "baseline_tps": 420,
+            "speedup": 2.17
+          },
+          "qa": {
+            "acceptance_length": 3.13,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 852,
+            "acceptance_at_pos": [
+              0.88,
+              0.58,
+              0.39,
+              0.28
+            ],
+            "throughput_tps": 953.4,
+            "baseline_tps": 420,
+            "speedup": 2.27
+          }
+        },
+        "throughput_tps": 932.4,
+        "baseline_tps": 420,
+        "speedup": 2.22
+      },
+      "error": null
+    },
+    {
+      "model": "RedHatAI/Llama-3.3-70B-Instruct_speculators_dflash_2l",
+      "target": "meta-llama/Llama-3.3-70B-Instruct",
+      "algorithm": "dflash",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-11T08:30:00Z",
+      "evaluated_at": "2025-07-17T11:20:00Z",
+      "gpus": "4xh100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.78,
+        "acceptance_at_pos": [
+          0.78,
+          0.48,
+          0.31,
+          0.21
+        ],
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.72,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 688,
+            "acceptance_at_pos": [
+              0.76,
+              0.46,
+              0.3,
+              0.2
+            ],
+            "throughput_tps": 852.6,
+            "baseline_tps": 420,
+            "speedup": 2.03
+          },
+          "qa": {
+            "acceptance_length": 2.84,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 736,
+            "acceptance_at_pos": [
+              0.8,
+              0.5,
+              0.32,
+              0.22
+            ],
+            "throughput_tps": 882.0,
+            "baseline_tps": 420,
+            "speedup": 2.1
+          }
+        },
+        "throughput_tps": 865.2,
+        "baseline_tps": 420,
+        "speedup": 2.06
+      },
+      "error": null
+    },
+    {
+      "model": "RedHatAI/Mistral-7B-Instruct-v0.3_speculators_eagle3_2l",
+      "target": "mistralai/Mistral-7B-Instruct-v0.3",
+      "algorithm": "eagle3",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-12T15:00:00Z",
+      "evaluated_at": "2025-07-18T14:00:00Z",
+      "gpus": "1xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.63,
+        "acceptance_at_pos": [
+          0.74,
+          0.44,
+          0.27,
+          0.18
+        ],
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.57,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 628,
+            "acceptance_at_pos": [
+              0.72,
+              0.42,
+              0.25,
+              0.18
+            ],
+            "throughput_tps": 2134.0,
+            "baseline_tps": 1100,
+            "speedup": 1.94
+          },
+          "qa": {
+            "acceptance_length": 2.69,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 676,
+            "acceptance_at_pos": [
+              0.76,
+              0.46,
+              0.29,
+              0.18
+            ],
+            "throughput_tps": 2211.0,
+            "baseline_tps": 1100,
+            "speedup": 2.01
+          }
+        },
+        "throughput_tps": 2178.0,
+        "baseline_tps": 1100,
+        "speedup": 1.98
+      },
+      "error": null
+    },
+    {
+      "model": "RedHatAI/Mistral-7B-Instruct-v0.3_speculators_peagle_2l",
+      "target": "mistralai/Mistral-7B-Instruct-v0.3",
+      "algorithm": "peagle",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-13T10:45:00Z",
+      "evaluated_at": "2025-07-19T08:30:00Z",
+      "gpus": "1xa100",
+      "status": "failed",
+      "metrics": null,
+      "error": "CUDA out of memory: tried to allocate 2.4 GiB"
+    },
+    {
+      "model": "RedHatAI/Mistral-7B-Instruct-v0.3_speculators_mtp",
+      "target": "mistralai/Mistral-7B-Instruct-v0.3",
+      "algorithm": "mtp",
+      "num_speculative_tokens": 3,
+      "hf_last_modified": "2025-07-14T07:20:00Z",
+      "evaluated_at": "2025-07-20T10:15:00Z",
+      "gpus": "1xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.45,
+        "acceptance_at_pos": [
+          0.72,
+          0.45,
+          0.28
+        ],
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.39,
+            "num_drafts": 400,
+            "num_draft_tokens": 1200,
+            "num_accepted_tokens": 556,
+            "acceptance_at_pos": [
+              0.7,
+              0.43,
+              0.26
+            ],
+            "throughput_tps": 2024.0,
+            "baseline_tps": 1100,
+            "speedup": 1.84
+          },
+          "qa": {
+            "acceptance_length": 2.51,
+            "num_drafts": 400,
+            "num_draft_tokens": 1200,
+            "num_accepted_tokens": 604,
+            "acceptance_at_pos": [
+              0.74,
+              0.47,
+              0.3
+            ],
+            "throughput_tps": 2101.0,
+            "baseline_tps": 1100,
+            "speedup": 1.91
+          }
+        },
+        "throughput_tps": 2057.0,
+        "baseline_tps": 1100,
+        "speedup": 1.87
+      },
+      "error": null
+    },
+    {
+      "model": "RedHatAI/Qwen3-32B_speculators_eagle3_2l",
+      "target": "Qwen/Qwen3-32B",
+      "algorithm": "eagle3",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-16T13:00:00Z",
+      "evaluated_at": "2025-07-22T09:45:00Z",
+      "gpus": "4xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 3.28,
+        "acceptance_at_pos": [
+          0.9,
+          0.6,
+          0.44,
+          0.34
+        ],
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 3.2,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 880,
+            "acceptance_at_pos": [
+              0.88,
+              0.58,
+              0.42,
+              0.32
+            ],
+            "throughput_tps": 1201.2,
+            "baseline_tps": 520,
+            "speedup": 2.31
+          },
+          "qa": {
+            "acceptance_length": 3.36,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 944,
+            "acceptance_at_pos": [
+              0.92,
+              0.62,
+              0.46,
+              0.36
+            ],
+            "throughput_tps": 1248.0,
+            "baseline_tps": 520,
+            "speedup": 2.4
+          }
+        },
+        "throughput_tps": 1222.0,
+        "baseline_tps": 520,
+        "speedup": 2.35
+      },
+      "error": null
+    },
+    {
+      "model": "RedHatAI/Qwen3-32B_speculators_peagle_2l",
+      "target": "Qwen/Qwen3-32B",
+      "algorithm": "peagle",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-17T11:30:00Z",
+      "evaluated_at": "2025-07-23T14:00:00Z",
+      "gpus": "4xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 3.01,
+        "acceptance_at_pos": [
+          0.84,
+          0.55,
+          0.36,
+          0.26
+        ],
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.95,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 780,
+            "acceptance_at_pos": [
+              0.82,
+              0.53,
+              0.35,
+              0.25
+            ],
+            "throughput_tps": 1123.2,
+            "baseline_tps": 520,
+            "speedup": 2.16
+          },
+          "qa": {
+            "acceptance_length": 3.07,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 828,
+            "acceptance_at_pos": [
+              0.86,
+              0.57,
+              0.37,
+              0.27
+            ],
+            "throughput_tps": 1159.6,
+            "baseline_tps": 520,
+            "speedup": 2.23
+          }
+        },
+        "throughput_tps": 1144.0,
+        "baseline_tps": 520,
+        "speedup": 2.2
       },
       "error": null
     }
