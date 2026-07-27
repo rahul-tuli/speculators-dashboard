@@ -120,15 +120,16 @@ def parse_acceptance(raw_dir: Path) -> dict:
     }
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--entry", required=True, help="pending entry JSON from discover.py")
-    ap.add_argument("--status", choices=["ok", "failed"], required=True)
-    ap.add_argument("--raw-dir", type=Path, default=None)
-    ap.add_argument("--error", default=None)
-    args = ap.parse_args()
+def upsert_result(entry_path, status, raw_dir=None, error=None):
+    """Normalize one eval run into results.json (idempotent upsert).
 
-    entry = json.loads(Path(args.entry).read_text())
+    Can be called from CLI (via main) or imported directly.
+    """
+    entry_path = Path(entry_path)
+    if raw_dir is not None:
+        raw_dir = Path(raw_dir)
+
+    entry = json.loads(entry_path.read_text())
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     record = {
@@ -139,14 +140,14 @@ def main() -> None:
         "hf_last_modified": entry.get("hf_last_modified"),
         "evaluated_at": now,
         "gpus": f"{entry['gpus']}x{entry['gpu_type']}",
-        "status": args.status,
+        "status": status,
         "metrics": None,
-        "error": args.error,
+        "error": error,
     }
-    if args.status == "ok":
-        if not args.raw_dir:
-            ap.error("--raw-dir is required for --status ok")
-        record["metrics"] = parse_acceptance(args.raw_dir)
+    if status == "ok":
+        if not raw_dir:
+            raise ValueError("raw_dir is required when status is 'ok'")
+        record["metrics"] = parse_acceptance(raw_dir)
 
     validate_record(record)
 
@@ -157,7 +158,18 @@ def main() -> None:
     RESULTS_JSON.write_text(
         json.dumps({"updated_at": now, "models": models}, indent=2) + "\n"
     )
-    print(f"results.json: upserted {record['model']} (status={args.status})")
+    print(f"results.json: upserted {record['model']} (status={status})")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--entry", required=True, help="pending entry JSON from discover.py")
+    ap.add_argument("--status", choices=["ok", "failed"], required=True)
+    ap.add_argument("--raw-dir", type=Path, default=None)
+    ap.add_argument("--error", default=None)
+    args = ap.parse_args()
+
+    upsert_result(args.entry, args.status, raw_dir=args.raw_dir, error=args.error)
 
 
 if __name__ == "__main__":

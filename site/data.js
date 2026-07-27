@@ -52,11 +52,7 @@ function fetchJson(url) {
   });
 }
 
-Data.shortName = shortName;
 Data.targetFamily = targetFamily;
-Data.metricValue = metricValue;
-Data.throughputValue = throughputValue;
-Data.speedupValue = speedupValue;
 
 Data.load = function (resultsUrl, sampleUrl) {
   return fetchJson(resultsUrl).then(
@@ -84,13 +80,13 @@ Data.process = function (models) {
     if (m.target) targets[m.target] = true;
     if (m.algorithm) algos[m.algorithm] = true;
 
-    m._shortName = shortName(m.model);
-    m._targetFamily = targetFamily(m.target);
-    m._acceptanceLength = metricValue(m);
-    m._throughput = throughputValue(m);
-    m._speedup = speedupValue(m);
+    m.shortName = shortName(m.model);
+    m.targetFamily = targetFamily(m.target);
+    m.acceptanceLength = metricValue(m);
+    m.throughput = throughputValue(m);
+    m.speedup = speedupValue(m);
 
-    if (m._throughput !== null) anyThroughput = true;
+    if (m.throughput !== null) anyThroughput = true;
   });
 
   return {
@@ -141,16 +137,16 @@ Data.sort = function (models, sortKey, sortDir) {
       bv = b.gpus || "";
       cmp = String(av).localeCompare(String(bv)) * sign;
     } else if (key === "throughput_tps") {
-      av = a._throughput;
-      bv = b._throughput;
+      av = a.throughput;
+      bv = b.throughput;
       cmp = compareNumeric(av, bv, sign);
     } else if (key === "speedup") {
-      av = a._speedup;
-      bv = b._speedup;
+      av = a.speedup;
+      bv = b.speedup;
       cmp = compareNumeric(av, bv, sign);
     } else if (key === "acceptance_length") {
-      av = a._acceptanceLength;
-      bv = b._acceptanceLength;
+      av = a.acceptanceLength;
+      bv = b.acceptanceLength;
       cmp = compareNumeric(av, bv, sign);
     } else if (key === "evaluated_at") {
       av = Date.parse(a.evaluated_at || "") || null;

@@ -17,6 +17,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from normalize import upsert_result
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
 DEVENV_DIR = Path(os.environ.get("DEVENV_DIR", Path.home() / "projects" / "devenv"))
@@ -123,22 +125,12 @@ def evaluate_model(entry: dict):
         run_eval_in_pod(model, gpus, algorithm)
         raw_dir = copy_results_out(slug)
 
-        run_cmd([
-            sys.executable, str(SCRIPT_DIR / "normalize.py"),
-            "--entry", str(entry_path),
-            "--raw-dir", str(raw_dir),
-            "--status", "ok",
-        ])
+        upsert_result(entry_path, "ok", raw_dir=raw_dir)
         print(f"=== Done: {model} ===")
     except Exception as e:
         print(f"ERROR: {e}")
         try:
-            run_cmd([
-                sys.executable, str(SCRIPT_DIR / "normalize.py"),
-                "--entry", str(entry_path),
-                "--status", "failed",
-                "--error", str(e),
-            ])
+            upsert_result(entry_path, "failed", error=str(e))
         except Exception:
             print(f"ERROR: normalize.py also failed for {model}")
     finally:
