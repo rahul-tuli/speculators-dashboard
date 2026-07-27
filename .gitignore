@@ -1,0 +1,6 @@
+.venv/
+logs/
+results/pending/
+results/*/raw/
+__pycache__/
+.DS_Store

@@ -1,0 +1,77 @@
+{
+  "updated_at": "2026-07-27T10:00:00Z",
+  "models": [
+    {
+      "model": "RedHatAI/Qwen3-8B-speculator.eagle3",
+      "target": "Qwen/Qwen3-8B",
+      "algorithm": "eagle3",
+      "num_speculative_tokens": 3,
+      "hf_last_modified": "2026-04-08T12:25:55.000Z",
+      "evaluated_at": "2026-07-26T09:00:00Z",
+      "gpus": "1xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.71,
+        "acceptance_at_pos": [0.83, 0.71, 0.55],
+        "num_drafts": 12345,
+        "subsets": {
+          "HumanEval": {"acceptance_length": 2.8, "acceptance_at_pos": [0.85, 0.72, 0.57], "num_drafts": 6000, "num_draft_tokens": 18000, "num_accepted_tokens": 10800},
+          "qa": {"acceptance_length": 2.6, "acceptance_at_pos": [0.81, 0.69, 0.52], "num_drafts": 6345, "num_draft_tokens": 19000, "num_accepted_tokens": 10200}
+        }
+      },
+      "error": null
+    },
+    {
+      "model": "RedHatAI/Llama-3.1-8B-Instruct-speculator.dflash",
+      "target": "meta-llama/Llama-3.1-8B-Instruct",
+      "algorithm": "dflash",
+      "num_speculative_tokens": 5,
+      "hf_last_modified": "2026-05-14T08:10:22.000Z",
+      "evaluated_at": "2026-07-24T14:30:00Z",
+      "gpus": "1xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 3.42,
+        "acceptance_at_pos": [0.88, 0.76, 0.64, 0.52, 0.41],
+        "num_drafts": 20500,
+        "subsets": {
+          "HumanEval": {"acceptance_length": 3.55, "acceptance_at_pos": [0.9, 0.79, 0.68, 0.55, 0.44], "num_drafts": 10000, "num_draft_tokens": 50000, "num_accepted_tokens": 24000},
+          "qa": {"acceptance_length": 3.31, "acceptance_at_pos": [0.86, 0.74, 0.61, 0.5, 0.39], "num_drafts": 10500, "num_draft_tokens": 52500, "num_accepted_tokens": 23500}
+        }
+      },
+      "error": null
+    },
+    {
+      "model": "RedHatAI/Mistral-7B-speculator.peagle",
+      "target": "mistralai/Mistral-7B-Instruct-v0.3",
+      "algorithm": "peagle",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2026-06-02T17:44:10.000Z",
+      "evaluated_at": "2026-07-27T08:15:00Z",
+      "gpus": "1xa100",
+      "status": "failed",
+      "metrics": null,
+      "error": "RuntimeError: CUDA out of memory while loading target model (tried to allocate 14.2 GiB on device with 15.8 GiB free)"
+    },
+    {
+      "model": "RedHatAI/Llama-3.3-70B-Instruct-speculator.eagle3",
+      "target": "meta-llama/Llama-3.3-70B-Instruct",
+      "algorithm": "eagle3",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2026-03-21T11:05:47.000Z",
+      "evaluated_at": "2026-07-20T19:45:00Z",
+      "gpus": "4xh100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 3.05,
+        "acceptance_at_pos": [0.86, 0.74, 0.6, 0.48],
+        "num_drafts": 18200,
+        "subsets": {
+          "HumanEval": {"acceptance_length": 3.2, "acceptance_at_pos": [0.89, 0.78, 0.64, 0.51], "num_drafts": 9000, "num_draft_tokens": 36000, "num_accepted_tokens": 19800},
+          "qa": {"acceptance_length": 2.9, "acceptance_at_pos": [0.83, 0.7, 0.56, 0.45], "num_drafts": 9200, "num_draft_tokens": 36800, "num_accepted_tokens": 18700}
+        }
+      },
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Speculators Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Speculators Dashboard</h1>
+    <p class="tagline">Evaluation results for speculative-decoding draft models ("speculators").</p>
+    <p class="meta">
+      <span id="last-updated">Last updated: &mdash;</span>
+      &middot;
+      <a href="https://huggingface.co/collections/RedHatAI/speculator-models">HF collection</a>
+      &middot;
+      <a href="https://github.com/vllm-project/speculators">speculators repo</a>
+    </p>
+  </header>
+
+  <div id="sample-banner" class="sample-banner" hidden>showing sample data</div>
+
+  <section class="stats" id="stats">
+    <div class="stat-card"><div class="stat-value" id="stat-total">&mdash;</div><div class="stat-label">Total models</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-ok">&mdash;</div><div class="stat-label">Evaluated OK</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-failed">&mdash;</div><div class="stat-label">Failed</div></div>
+    <div class="stat-card"><div class="stat-value" id="stat-mean">&mdash;</div><div class="stat-label">Mean accept. len</div></div>
+  </section>
+
+  <div class="controls">
+    <input type="search" id="filter" placeholder="Filter by model, target, or algorithm&hellip;">
+  </div>
+
+  <div class="table-wrap">
+    <table id="models-table">
+      <thead>
+        <tr>
+          <th data-key="model">Model</th>
+          <th data-key="target">Target</th>
+          <th data-key="algorithm">Algorithm</th>
+          <th data-key="num_speculative_tokens">#Tok</th>
+          <th data-key="acceptance_length">Accept. Len</th>
+          <th data-key="acceptance_at_pos">Acceptance@pos</th>
+          <th data-key="evaluated_at">Evaluated</th>
+          <th data-key="gpus">GPUs</th>
+          <th data-key="status">Status</th>
+        </tr>
+      </thead>
+      <tbody id="models-tbody"></tbody>
+    </table>
+    <div id="placeholder" class="placeholder" hidden></div>
+  </div>
+
+  <footer class="site-footer">
+    <span>Data source: <code>results.json</code></span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
