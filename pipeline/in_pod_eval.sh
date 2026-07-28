@@ -66,12 +66,11 @@ if [ "$READY" != "1" ]; then
 fi
 echo "vLLM server ready."
 
-echo "=== Running acceptance-rate eval ==="
+echo "=== Running sweep eval (all subsets) ==="
 python /workspace/speculators/scripts/evaluate/evaluate.py \
     --target "http://localhost:${PORT}/v1" \
     --output-dir "$OUT/eval" \
-    throughput \
-    --subsets "HumanEval,qa" \
+    sweep \
     --max-requests 80 > "$OUT/evaluate.log" 2>&1 || {
         echo "ERROR: evaluate.py failed. Last log lines:"
         tail -30 "$OUT/evaluate.log"
@@ -79,4 +78,4 @@ python /workspace/speculators/scripts/evaluate/evaluate.py \
     }
 
 echo "=== Eval complete ==="
-ls -la "$OUT/eval"
+ls -lR "$OUT/eval"
