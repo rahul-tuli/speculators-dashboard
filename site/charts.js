@@ -1,9 +1,9 @@
 "use strict";
 
 /* ============================================================
-   Speculators Dashboard v2 — charts.js
+   Speculators Dashboard — charts.js
    Global Charts object for ECharts-based visualizations.
-   Loaded before app.js. Requires ECharts 5.5.1.
+   Requires ECharts 5.5.1.
    ============================================================ */
 
 var Charts = {};
@@ -84,7 +84,7 @@ Charts.resize = function () {
   });
 };
 
-// ── Chart 1: Algorithm Comparison — Grouped Bar ────────────────
+// ── Algorithm Comparison — Grouped Bar ──────────────────────────
 
 Charts.algoCompare = function (containerId, models, algoColors, algoOrder, hasThroughput) {
   var chart = initChart(containerId);
@@ -155,60 +155,6 @@ Charts.algoCompare = function (containerId, models, algoColors, algoOrder, hasTh
             return hasThroughput ? Math.round(p.value).toLocaleString() : p.value.toFixed(2);
           },
         },
-      };
-    }),
-  });
-
-  chart.setOption(option);
-};
-
-// ── Chart 2: Detail Row — Subset Acceptance@pos Grouped Bar ────
-
-Charts.subsetPositions = function (containerId, model) {
-  var chart = initChart(containerId);
-  if (!chart) return;
-
-  var subsets = model.metrics && model.metrics.subsets;
-  if (!subsets) return;
-
-  var names = Object.keys(subsets);
-  var maxPos = 0;
-  names.forEach(function (n) {
-    var pos = subsets[n].acceptance_at_pos;
-    if (Array.isArray(pos) && pos.length > maxPos) maxPos = pos.length;
-  });
-
-  if (maxPos === 0) return;
-
-  var posLabels = [];
-  for (var i = 0; i < maxPos; i++) posLabels.push("Pos " + (i + 1));
-
-  var colors = ["#6366f1", "#f59e0b", "#10b981", "#f43f5e", "#8b5cf6", "#06b6d4"];
-
-  var option = mergeDefaults({
-    grid: { left: 10, right: 10, top: 30, bottom: 30, containLabel: true },
-    legend: { data: names, bottom: 0, textStyle: { color: "#8b949e" } },
-    xAxis: {
-      type: "category",
-      data: posLabels,
-      axisLabel: { color: "#8b949e" },
-      axisLine: { lineStyle: { color: "#30363d" } },
-    },
-    yAxis: {
-      type: "value",
-      min: 0,
-      max: 1,
-      splitLine: { lineStyle: { color: "#21262d" } },
-      axisLabel: { color: "#8b949e" },
-    },
-    series: names.map(function (name, ni) {
-      var pos = subsets[name].acceptance_at_pos || [];
-      return {
-        name: name,
-        type: "bar",
-        data: pos.map(function (v) { return parseFloat(v.toFixed(3)); }),
-        itemStyle: { color: colors[ni % colors.length], borderRadius: [3, 3, 0, 0] },
-        barGap: "10%",
       };
     }),
   });

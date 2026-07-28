@@ -1,5 +1,10 @@
 "use strict";
 
+/* ============================================================
+   Speculators Dashboard — data.js
+   Data loading, processing, filtering, and sorting.
+   ============================================================ */
+
 var Data = {};
 
 function shortName(modelId) {
@@ -14,22 +19,10 @@ function targetFamily(targetId) {
   return idx >= 0 ? targetId.substring(idx + 1) : targetId;
 }
 
-function metricValue(m) {
-  return m && m.metrics && typeof m.metrics.acceptance_length === "number"
-    ? m.metrics.acceptance_length
-    : null;
-}
-
-function throughputValue(m) {
-  return m && m.metrics && typeof m.metrics.throughput_tps === "number"
-    ? m.metrics.throughput_tps
-    : null;
-}
-
-function speedupValue(m) {
-  return m && m.metrics && typeof m.metrics.speedup === "number"
-    ? m.metrics.speedup
-    : null;
+function safeNum(val) {
+  if (val === null || val === undefined) return null;
+  var n = Number(val);
+  return isNaN(n) || n === 0 ? null : n;
 }
 
 function compareNumeric(av, bv, sign) {
@@ -52,6 +45,7 @@ function fetchJson(url) {
   });
 }
 
+Data.shortName = shortName;
 Data.targetFamily = targetFamily;
 
 Data.load = function (resultsUrl, sampleUrl) {
@@ -80,13 +74,16 @@ Data.process = function (models) {
     if (m.target) targets[m.target] = true;
     if (m.algorithm) algos[m.algorithm] = true;
 
-    m.shortName = shortName(m.model);
-    m.targetFamily = targetFamily(m.target);
-    m.acceptanceLength = metricValue(m);
-    m.throughput = throughputValue(m);
-    m.speedup = speedupValue(m);
+    m._shortName = shortName(m.model);
+    m._targetFamily = targetFamily(m.target);
+    m._acceptanceLength = m.metrics && typeof m.metrics.acceptance_length === "number"
+      ? m.metrics.acceptance_length : null;
+    m._throughput = safeNum(m.metrics && m.metrics.throughput_tps);
+    m._speedup = safeNum(m.metrics && m.metrics.speedup);
+    m._ttft = safeNum(m.metrics && m.metrics.ttft_ms);
+    m._itl = safeNum(m.metrics && m.metrics.itl_ms);
 
-    if (m.throughput !== null) anyThroughput = true;
+    if (m._throughput !== null) anyThroughput = true;
   });
 
   return {
@@ -96,10 +93,26 @@ Data.process = function (models) {
   };
 };
 
+/** Build target tab data: { family, fullTarget, count }[] */
+Data.targetTabs = function (models) {
+  var counts = {};
+  var familyToFull = {};
+  models.forEach(function (m) {
+    var fam = m._targetFamily;
+    if (!fam) return;
+    counts[fam] = (counts[fam] || 0) + 1;
+    if (!familyToFull[fam]) familyToFull[fam] = m.target;
+  });
+  var tabs = Object.keys(counts).sort().map(function (fam) {
+    return { family: fam, fullTarget: familyToFull[fam], count: counts[fam] };
+  });
+  return tabs;
+};
+
 Data.filter = function (models, filters) {
   var f = filters;
   return models.filter(function (m) {
-    if (f.target !== "all" && m.target !== f.target) return false;
+    if (f.target !== "all" && m._targetFamily !== f.target) return false;
     if (f.algorithm !== "all" && m.algorithm !== f.algorithm) return false;
     if (f.text) {
       var q = f.text.toLowerCase();
@@ -117,6 +130,7 @@ Data.sort = function (models, sortKey, sortDir) {
   var dir = sortDir;
 
   models.sort(function (a, b) {
+    // Failed models always at bottom
     var af = a.status === "failed" ? 1 : 0;
     var bf = b.status === "failed" ? 1 : 0;
     if (af !== bf) return af - bf;
@@ -128,25 +142,29 @@ Data.sort = function (models, sortKey, sortDir) {
       av = a.model || "";
       bv = b.model || "";
       cmp = String(av).localeCompare(String(bv)) * sign;
-    } else if (key === "target") {
-      av = a.target || "";
-      bv = b.target || "";
-      cmp = String(av).localeCompare(String(bv)) * sign;
     } else if (key === "gpus") {
       av = a.gpus || "";
       bv = b.gpus || "";
       cmp = String(av).localeCompare(String(bv)) * sign;
     } else if (key === "throughput_tps") {
-      av = a.throughput;
-      bv = b.throughput;
+      av = a._throughput;
+      bv = b._throughput;
       cmp = compareNumeric(av, bv, sign);
     } else if (key === "speedup") {
-      av = a.speedup;
-      bv = b.speedup;
+      av = a._speedup;
+      bv = b._speedup;
       cmp = compareNumeric(av, bv, sign);
     } else if (key === "acceptance_length") {
-      av = a.acceptanceLength;
-      bv = b.acceptanceLength;
+      av = a._acceptanceLength;
+      bv = b._acceptanceLength;
+      cmp = compareNumeric(av, bv, sign);
+    } else if (key === "ttft_ms") {
+      av = a._ttft;
+      bv = b._ttft;
+      cmp = compareNumeric(av, bv, sign);
+    } else if (key === "itl_ms") {
+      av = a._itl;
+      bv = b._itl;
       cmp = compareNumeric(av, bv, sign);
     } else if (key === "evaluated_at") {
       av = Date.parse(a.evaluated_at || "") || null;
