@@ -17,6 +17,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from deploy_agent import lookup_deploy
 from normalize import upsert_baseline, upsert_result
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -125,10 +126,11 @@ def evaluate_model(entry: dict):
         run_eval_in_pod(model, gpus, algorithm)
         raw_dir = copy_results_out(slug)
 
-        # TODO(#13): deploy agent will populate these
+        deploy = lookup_deploy(model, entry.get("target", ""), algorithm, gpus)
         upsert_result(entry_path, "ok", raw_dir=raw_dir,
-                      deploy_command="", deploy_recipe_source="",
-                      deploy_recipe_model="")
+                      deploy_command=deploy["command"],
+                      deploy_recipe_source=deploy["recipe_source"],
+                      deploy_recipe_model=deploy["recipe_model"])
         print(f"=== Done: {model} ===")
     except Exception as e:
         print(f"ERROR: {e}")
