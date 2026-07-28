@@ -2,8 +2,11 @@
 """Normalize one eval run into results.json (idempotent upsert).
 
 Usage:
-  normalize.py --entry pending.json --status ok --raw-dir results/<slug>/raw
+  normalize.py --entry pending.json --status ok --raw-dir results/<slug>/raw \
+               --deploy-command "vllm serve ..." --deploy-recipe-source "https://..." \
+               --deploy-recipe-model "org/model"
   normalize.py --entry pending.json --status failed --error "pod unschedulable"
+  normalize.py --baseline --target "org/model" --gpus "4xh100" --throughput 150.2
 """
 
 from __future__ import annotations
@@ -21,11 +24,16 @@ SCHEMA_JSON = REPO_ROOT / "schema" / "results.json"
 REQUIRED_RECORD_KEYS = {
     "model", "target", "algorithm", "num_speculative_tokens",
     "hf_last_modified", "evaluated_at", "gpus", "status", "metrics", "error",
+    "deploy",
 }
-REQUIRED_METRICS_KEYS = {"acceptance_length", "acceptance_at_pos", "num_drafts", "subsets"}
+REQUIRED_METRICS_KEYS = {
+    "acceptance_length", "acceptance_at_pos", "num_drafts",
+    "throughput_tps", "speedup", "ttft_ms", "itl_ms", "subsets",
+}
 REQUIRED_SUBSET_KEYS = {
     "acceptance_length", "acceptance_at_pos", "num_drafts",
     "num_draft_tokens", "num_accepted_tokens",
+    "throughput_tps", "speedup", "ttft_ms", "itl_ms",
 }
 
 
@@ -60,6 +68,13 @@ def validate_record(record: dict) -> None:
         if missing_s:
             raise ValueError(f"subset {name!r} missing required keys: {missing_s}")
 
+    deploy = record.get("deploy")
+    if not isinstance(deploy, dict):
+        raise ValueError("deploy must be an object")
+    for key in ("command", "recipe_source", "recipe_model"):
+        if key not in deploy:
+            raise ValueError(f"deploy missing required key: {key!r}")
+
     try:
         import jsonschema
         schema = json.loads(SCHEMA_JSON.read_text())
@@ -73,7 +88,7 @@ def validate_record(record: dict) -> None:
 
 
 def parse_acceptance(raw_dir: Path) -> dict:
-    """Parse the eval harness's acceptance.csv into the dashboard schema."""
+    """Parse the eval harness's acceptance.csv into per-subset acceptance data."""
     csvs = sorted(raw_dir.rglob("acceptance.csv"))
     if not csvs:
         raise FileNotFoundError(f"no acceptance.csv found under {raw_dir}")
@@ -110,21 +125,119 @@ def parse_acceptance(raw_dir: Path) -> dict:
     if total_drafts <= 0:
         raise ValueError("acceptance.csv has zero drafts")
 
-    return {
+    top_level = {
         "acceptance_length": round(1 + total_accepted / total_drafts, 4),
         "acceptance_at_pos": [
             round(weighted_pos[k] / total_drafts, 4) for k in pos_keys
         ],
         "num_drafts": int(total_drafts),
+    }
+    return top_level, subsets
+
+
+def parse_perf(raw_dir: Path) -> dict[str, dict]:
+    """Parse sweep mode's perf_results.csv into per-subset throughput/latency data.
+
+    Returns {subset_name: {throughput_tps, ttft_ms, itl_ms}}.
+    Multiple rows per subset (different rate points) are aggregated by taking
+    the row with the highest output_tps_median (peak throughput).
+    """
+    csvs = sorted(raw_dir.rglob("perf_results.csv"))
+    if not csvs:
+        raise FileNotFoundError(f"no perf_results.csv found under {raw_dir}")
+    rows = list(csv.DictReader(csvs[0].open()))
+    if not rows:
+        raise ValueError(f"{csvs[0]} is empty")
+
+    best: dict[str, dict] = {}
+    for row in rows:
+        subset = row["subset"]
+        tps = float(row.get("output_tps_median") or 0)
+        if subset not in best or tps > best[subset]["throughput_tps"]:
+            best[subset] = {
+                "throughput_tps": round(tps, 2),
+                "ttft_ms": round(float(row.get("ttft_median_ms") or 0), 2),
+                "itl_ms": round(float(row.get("itl_median_ms") or 0), 2),
+            }
+    return best
+
+
+def build_metrics(raw_dir: Path, target: str, gpus: str, baselines: dict) -> dict:
+    """Combine acceptance + perf data into the full metrics object."""
+    top_acceptance, subsets = parse_acceptance(raw_dir)
+    perf_by_subset = parse_perf(raw_dir)
+
+    baseline_tps = None
+    target_baselines = baselines.get(target)
+    if target_baselines:
+        baseline_tps = target_baselines.get(gpus)
+
+    total_tokens = 0
+    weighted_tps = 0.0
+    weighted_ttft = 0.0
+    weighted_itl = 0.0
+
+    for name, sub in subsets.items():
+        perf = perf_by_subset.get(name, {})
+        sub["throughput_tps"] = perf.get("throughput_tps", 0.0)
+        sub["ttft_ms"] = perf.get("ttft_ms", 0.0)
+        sub["itl_ms"] = perf.get("itl_ms", 0.0)
+        sub["speedup"] = round(sub["throughput_tps"] / baseline_tps, 4) if baseline_tps else 0.0
+
+        tokens = sub["num_accepted_tokens"]
+        total_tokens += tokens
+        weighted_tps += sub["throughput_tps"] * tokens
+        weighted_ttft += sub["ttft_ms"] * tokens
+        weighted_itl += sub["itl_ms"] * tokens
+
+    if total_tokens > 0:
+        top_tps = round(weighted_tps / total_tokens, 2)
+        top_ttft = round(weighted_ttft / total_tokens, 2)
+        top_itl = round(weighted_itl / total_tokens, 2)
+    else:
+        top_tps = top_ttft = top_itl = 0.0
+
+    top_speedup = round(top_tps / baseline_tps, 4) if baseline_tps else 0.0
+
+    return {
+        **top_acceptance,
+        "throughput_tps": top_tps,
+        "speedup": top_speedup,
+        "ttft_ms": top_ttft,
+        "itl_ms": top_itl,
         "subsets": subsets,
     }
 
 
-def upsert_result(entry_path, status, raw_dir=None, error=None):
-    """Normalize one eval run into results.json (idempotent upsert).
+def _load_results() -> dict:
+    if RESULTS_JSON.exists():
+        results = json.loads(RESULTS_JSON.read_text())
+        if "baselines" not in results:
+            results["baselines"] = {}
+        return results
+    return {"baselines": {}, "models": []}
 
-    Can be called from CLI (via main) or imported directly.
-    """
+
+def _save_results(results: dict) -> None:
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    results["updated_at"] = now
+    RESULTS_JSON.write_text(json.dumps(results, indent=2) + "\n")
+
+
+def upsert_baseline(target: str, gpus: str, throughput_tps: float) -> None:
+    """Record an autoregressive baseline throughput for a target model + GPU config."""
+    results = _load_results()
+    if target not in results["baselines"]:
+        results["baselines"][target] = {}
+    results["baselines"][target][gpus] = round(throughput_tps, 2)
+    _save_results(results)
+    print(f"results.json: baseline {target} @ {gpus} = {throughput_tps:.2f} tok/s")
+
+
+def upsert_result(entry_path, status, raw_dir=None, error=None,
+                  deploy_command=None, deploy_recipe_source=None,
+                  deploy_recipe_model=None):
+    """Normalize one eval run into results.json (idempotent upsert)."""
     entry_path = Path(entry_path)
     if raw_dir is not None:
         raw_dir = Path(raw_dir)
@@ -132,6 +245,7 @@ def upsert_result(entry_path, status, raw_dir=None, error=None):
     entry = json.loads(entry_path.read_text())
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    gpus_str = f"{entry['gpus']}x{entry['gpu_type']}"
     record = {
         "model": entry["model"],
         "target": entry.get("target"),
@@ -139,37 +253,77 @@ def upsert_result(entry_path, status, raw_dir=None, error=None):
         "num_speculative_tokens": entry.get("num_speculative_tokens"),
         "hf_last_modified": entry.get("hf_last_modified"),
         "evaluated_at": now,
-        "gpus": f"{entry['gpus']}x{entry['gpu_type']}",
+        "gpus": gpus_str,
         "status": status,
         "metrics": None,
         "error": error,
+        "deploy": {
+            "command": deploy_command or "",
+            "recipe_source": deploy_recipe_source or "",
+            "recipe_model": deploy_recipe_model or "",
+        },
     }
+
     if status == "ok":
         if not raw_dir:
             raise ValueError("raw_dir is required when status is 'ok'")
-        record["metrics"] = parse_acceptance(raw_dir)
+        results = _load_results()
+        record["metrics"] = build_metrics(
+            raw_dir, entry.get("target", ""), gpus_str, results.get("baselines", {}),
+        )
 
     validate_record(record)
 
-    results = json.loads(RESULTS_JSON.read_text()) if RESULTS_JSON.exists() else {"models": []}
+    results = _load_results()
     models = [m for m in results.get("models", []) if m["model"] != record["model"]]
     models.append(record)
     models.sort(key=lambda m: m["model"])
-    RESULTS_JSON.write_text(
-        json.dumps({"updated_at": now, "models": models}, indent=2) + "\n"
-    )
+    results["models"] = models
+    _save_results(results)
     print(f"results.json: upserted {record['model']} (status={status})")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--entry", required=True, help="pending entry JSON from discover.py")
-    ap.add_argument("--status", choices=["ok", "failed"], required=True)
-    ap.add_argument("--raw-dir", type=Path, default=None)
-    ap.add_argument("--error", default=None)
-    args = ap.parse_args()
+    sub = ap.add_subparsers(dest="cmd")
 
-    upsert_result(args.entry, args.status, raw_dir=args.raw_dir, error=args.error)
+    eval_p = sub.add_parser("eval", help="Upsert a drafter eval result")
+    eval_p.add_argument("--entry", required=True, help="pending entry JSON from discover.py")
+    eval_p.add_argument("--status", choices=["ok", "failed"], required=True)
+    eval_p.add_argument("--raw-dir", type=Path, default=None)
+    eval_p.add_argument("--error", default=None)
+    eval_p.add_argument("--deploy-command", default=None)
+    eval_p.add_argument("--deploy-recipe-source", default=None)
+    eval_p.add_argument("--deploy-recipe-model", default=None)
+
+    base_p = sub.add_parser("baseline", help="Upsert an autoregressive baseline")
+    base_p.add_argument("--target", required=True)
+    base_p.add_argument("--gpus", required=True)
+    base_p.add_argument("--throughput", type=float, required=True)
+
+    # Backward compat: if no subcommand, treat as eval with flat args
+    args, remaining = ap.parse_known_args()
+    if args.cmd is None:
+        eval_p2 = argparse.ArgumentParser()
+        eval_p2.add_argument("--entry", required=True)
+        eval_p2.add_argument("--status", choices=["ok", "failed"], required=True)
+        eval_p2.add_argument("--raw-dir", type=Path, default=None)
+        eval_p2.add_argument("--error", default=None)
+        eval_p2.add_argument("--deploy-command", default=None)
+        eval_p2.add_argument("--deploy-recipe-source", default=None)
+        eval_p2.add_argument("--deploy-recipe-model", default=None)
+        args = eval_p2.parse_args()
+        args.cmd = "eval"
+
+    if args.cmd == "baseline":
+        upsert_baseline(args.target, args.gpus, args.throughput)
+    else:
+        upsert_result(
+            args.entry, args.status, raw_dir=args.raw_dir, error=args.error,
+            deploy_command=args.deploy_command,
+            deploy_recipe_source=args.deploy_recipe_source,
+            deploy_recipe_model=args.deploy_recipe_model,
+        )
 
 
 if __name__ == "__main__":

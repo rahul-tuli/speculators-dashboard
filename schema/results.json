@@ -2,11 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Speculators Eval Results",
   "type": "object",
-  "required": ["updated_at", "models"],
+  "required": ["updated_at", "baselines", "models"],
   "properties": {
     "updated_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "baselines": {
+      "type": "object",
+      "description": "Autoregressive throughput baselines keyed by target model ID",
+      "additionalProperties": { "$ref": "#/$defs/baseline" }
     },
     "models": {
       "type": "array",
@@ -15,6 +20,15 @@
   },
   "additionalProperties": false,
   "$defs": {
+    "baseline": {
+      "type": "object",
+      "description": "Throughput per GPU config for a target model without a drafter",
+      "additionalProperties": {
+        "type": "number",
+        "description": "Throughput in tokens/sec for this GPU config"
+      },
+      "minProperties": 1
+    },
     "model": {
       "type": "object",
       "required": [
@@ -27,7 +41,8 @@
         "gpus",
         "status",
         "metrics",
-        "error"
+        "error",
+        "deploy"
       ],
       "properties": {
         "model": { "type": "string" },
@@ -49,7 +64,18 @@
             { "type": "null" },
             { "type": "string" }
           ]
-        }
+        },
+        "deploy": { "$ref": "#/$defs/deploy" }
+      },
+      "additionalProperties": false
+    },
+    "deploy": {
+      "type": "object",
+      "required": ["command", "recipe_source", "recipe_model"],
+      "properties": {
+        "command": { "type": "string" },
+        "recipe_source": { "type": "string" },
+        "recipe_model": { "type": "string" }
       },
       "additionalProperties": false
     },
@@ -59,6 +85,10 @@
         "acceptance_length",
         "acceptance_at_pos",
         "num_drafts",
+        "throughput_tps",
+        "speedup",
+        "ttft_ms",
+        "itl_ms",
         "subsets"
       ],
       "properties": {
@@ -69,6 +99,10 @@
           "minItems": 1
         },
         "num_drafts": { "type": "integer", "minimum": 0 },
+        "throughput_tps": { "type": "number" },
+        "speedup": { "type": "number" },
+        "ttft_ms": { "type": "number" },
+        "itl_ms": { "type": "number" },
         "subsets": {
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/subset" },
@@ -84,7 +118,11 @@
         "acceptance_at_pos",
         "num_drafts",
         "num_draft_tokens",
-        "num_accepted_tokens"
+        "num_accepted_tokens",
+        "throughput_tps",
+        "speedup",
+        "ttft_ms",
+        "itl_ms"
       ],
       "properties": {
         "acceptance_length": { "type": "number" },
@@ -95,7 +133,11 @@
         },
         "num_drafts": { "type": "integer", "minimum": 0 },
         "num_draft_tokens": { "type": "integer", "minimum": 0 },
-        "num_accepted_tokens": { "type": "integer", "minimum": 0 }
+        "num_accepted_tokens": { "type": "integer", "minimum": 0 },
+        "throughput_tps": { "type": "number" },
+        "speedup": { "type": "number" },
+        "ttft_ms": { "type": "number" },
+        "itl_ms": { "type": "number" }
       },
       "additionalProperties": false
     }

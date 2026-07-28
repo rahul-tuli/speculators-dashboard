@@ -125,12 +125,17 @@ def evaluate_model(entry: dict):
         run_eval_in_pod(model, gpus, algorithm)
         raw_dir = copy_results_out(slug)
 
-        upsert_result(entry_path, "ok", raw_dir=raw_dir)
+        # TODO(#13): deploy agent will populate these
+        upsert_result(entry_path, "ok", raw_dir=raw_dir,
+                      deploy_command="", deploy_recipe_source="",
+                      deploy_recipe_model="")
         print(f"=== Done: {model} ===")
     except Exception as e:
         print(f"ERROR: {e}")
         try:
-            upsert_result(entry_path, "failed", error=str(e))
+            upsert_result(entry_path, "failed", error=str(e),
+                          deploy_command="", deploy_recipe_source="",
+                          deploy_recipe_model="")
         except Exception:
             print(f"ERROR: normalize.py also failed for {model}")
     finally:
