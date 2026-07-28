@@ -8,7 +8,7 @@
 
 // ── Constants ─────────────────────────────────────────────────
 
-var RESULTS_URL = "../results.json";
+var RESULTS_URL = "./results.json";
 var SAMPLE_URL = "./sample-results.json";
 
 var ALGO_COLORS = {
