@@ -1,37 +1,34 @@
 "use strict";
 
 /* ============================================================
-   Speculators Dashboard v2 — render.js
-   DOM construction and rendering helpers.
-   Loaded after charts.js and before data.js.
+   Speculators Dashboard — render.js
+   DOM construction and rendering helpers (Variant A design).
    ============================================================ */
 
 var Render = {};
 
-// ── Private Helpers ───────────────────────────────────────────
+// ── DOM Helper ───────────────────────────────────────────────
 
-function el(tag, className, text) {
-  var node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined && text !== null) node.textContent = String(text);
-  return node;
+function h(tag, attrs, children) {
+  var el = document.createElement(tag);
+  if (attrs) {
+    Object.keys(attrs).forEach(function (k) {
+      if (k === "className") el.className = attrs[k];
+      else if (k === "innerHTML") el.innerHTML = attrs[k];
+      else if (k.slice(0, 2) === "on") el.addEventListener(k.slice(2).toLowerCase(), attrs[k]);
+      else if (k === "style" && typeof attrs[k] === "object") Object.assign(el.style, attrs[k]);
+      else el.setAttribute(k, attrs[k]);
+    });
+  }
+  if (children != null) {
+    if (typeof children === "string" || typeof children === "number") el.textContent = String(children);
+    else if (Array.isArray(children)) children.forEach(function (c) { if (c) el.appendChild(c); });
+    else if (children instanceof HTMLElement) el.appendChild(children);
+  }
+  return el;
 }
 
-function relativeDate(iso) {
-  if (!iso) return "—";
-  var t = Date.parse(iso);
-  if (isNaN(t)) return "—";
-  var diff = Date.now() - t;
-  var abs = Math.abs(diff);
-  var mins = Math.round(abs / 60000);
-  var s;
-  if (mins < 60) s = mins <= 1 ? "1m" : mins + "m";
-  else if (mins < 60 * 24) s = Math.round(mins / 60) + "h";
-  else if (mins < 60 * 24 * 30) s = Math.round(mins / (60 * 24)) + "d";
-  else if (mins < 60 * 24 * 365) s = Math.round(mins / (60 * 24 * 30)) + "mo";
-  else s = Math.round(mins / (60 * 24 * 365)) + "y";
-  return diff >= 0 ? s + " ago" : "in " + s;
-}
+// ── Formatting Helpers ───────────────────────────────────────
 
 function fmtDate(iso) {
   var t = Date.parse(iso || "");
@@ -39,257 +36,197 @@ function fmtDate(iso) {
   return new Date(t).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
-function hfLink(modelId) {
-  if (!modelId || typeof modelId !== "string") return null;
-  var a = el("a", "mono");
-  a.href = "https://huggingface.co/" + encodeURI(modelId);
-  a.target = "_blank";
-  a.rel = "noopener noreferrer";
-  a.addEventListener("click", function (e) { e.stopPropagation(); });
-  return a;
+function spdClass(val) {
+  if (val === null || val === undefined) return "";
+  if (val >= 2) return "spd-excellent";
+  if (val >= 1.5) return "spd-good";
+  if (val >= 1.2) return "spd-moderate";
+  return "spd-low";
 }
 
 function algoClass(algo) {
-  var map = { eagle3: "badge-eagle3", dflash: "badge-dflash", peagle: "badge-peagle", mtp: "badge-mtp" };
-  return map[(algo || "").toLowerCase()] || "badge-other";
-}
-
-function speedupClass(val) {
-  if (val === null || val === undefined) return "";
-  if (val >= 2) return "speedup-excellent";
-  if (val >= 1.5) return "speedup-good";
-  if (val >= 1.2) return "speedup-moderate";
-  return "speedup-low";
+  var map = { eagle3: "algo-eagle3", dflash: "algo-dflash", peagle: "algo-peagle", mtp: "algo-mtp" };
+  return map[(algo || "").toLowerCase()] || "algo-other";
 }
 
 function sparkline(values) {
-  var wrap = el("span", "spark");
+  var wrap = h("span", { className: "spark" });
   if (!Array.isArray(values) || values.length === 0) {
-    wrap.appendChild(el("span", null, "—"));
+    wrap.appendChild(h("span", null, "—"));
     return wrap;
   }
-  for (var i = 0; i < values.length; i++) {
-    var bar = el("span", "spark-bar");
-    var h = Math.max(1, Math.round((Number(values[i]) || 0) * 18));
-    bar.style.height = h + "px";
-    bar.title = (Number(values[i]) || 0).toFixed(2);
+  values.forEach(function (v) {
+    var bar = h("span", {
+      className: "spark-bar",
+      style: { height: Math.max(2, Math.round((Number(v) || 0) * 18)) + "px" },
+      title: (Number(v) || 0).toFixed(2)
+    });
     wrap.appendChild(bar);
-  }
+  });
   return wrap;
 }
 
-function detailContainerId(modelId, suffix) {
-  return "detail-" + suffix + "-" + modelId.replace(/[^a-zA-Z0-9]/g, "-");
-}
-
-function renderSortIndicators(sortKey, sortDir) {
-  var ths = document.querySelectorAll("#models-table th");
-  ths.forEach(function (th) {
-    var old = th.querySelector(".sort-arrow");
-    if (old) old.remove();
-    if (th.dataset.key === sortKey) {
-      th.appendChild(el("span", "sort-arrow", sortDir === "asc" ? "▲" : "▼"));
-    }
+function copyToClipboard(text, btn) {
+  navigator.clipboard.writeText(text).then(function () {
+    var orig = btn.textContent;
+    btn.textContent = "Copied!";
+    btn.style.color = "var(--green)";
+    setTimeout(function () { btn.textContent = orig; btn.style.color = ""; }, 1200);
   });
 }
 
-function modelRow(m, opts) {
-  var classes = "model-row";
-  if (m.status === "failed") classes += " failed-row";
-  if (opts.expandedModel === m.model) classes += " expanded";
-
-  var tr = el("tr", classes);
-  tr.addEventListener("click", function () {
-    if (opts.expandedModel === m.model) {
-      Charts.dispose(detailContainerId(m.model, "pos"));
-    }
-    opts.onToggleExpand(m.model);
-  });
-
-  // 1. Drafter column: shortName link + algorithm badge
-  var tdDrafter = el("td");
-  var link = hfLink(m.model);
-  if (link) {
-    link.textContent = m.shortName || "—";
-    tdDrafter.appendChild(link);
-  } else {
-    tdDrafter.appendChild(el("span", "mono", m.shortName || "—"));
-  }
-  tdDrafter.appendChild(document.createTextNode(" "));
-  tdDrafter.appendChild(el("span", "badge-algo " + algoClass(m.algorithm), m.algorithm || "other"));
-  tr.appendChild(tdDrafter);
-
-  // 2. Target column
-  var tdTarget = el("td");
-  var targetLink = hfLink(m.target);
-  if (targetLink) {
-    targetLink.textContent = m.targetFamily || "—";
-    tdTarget.appendChild(targetLink);
-  } else {
-    tdTarget.appendChild(el("span", "mono", m.targetFamily || "—"));
-  }
-  tr.appendChild(tdTarget);
-
-  if (opts.hasThroughput) {
-    var tdThroughput = el("td", "col-metric");
-    if (m.throughput !== null) {
-      var tpVal = el("span", "throughput-value", Math.round(m.throughput).toLocaleString());
-      var tpUnit = el("span", "throughput-unit", "tok/s");
-      tdThroughput.appendChild(tpVal);
-      tdThroughput.appendChild(tpUnit);
-    } else {
-      tdThroughput.textContent = "—";
-    }
-    tr.appendChild(tdThroughput);
-
-    var tdSpeedup = el("td", "col-metric");
-    if (m.speedup !== null) {
-      var sClass = "speedup-badge " + speedupClass(m.speedup);
-      tdSpeedup.appendChild(el("span", sClass, m.speedup.toFixed(1) + "x"));
-    } else {
-      tdSpeedup.textContent = "—";
-    }
-    tr.appendChild(tdSpeedup);
-  }
-
-  // 5. Acceptance Length column
-  var tdAcc = el("td", "col-metric");
-  tdAcc.textContent = m.acceptanceLength !== null ? m.acceptanceLength.toFixed(2) : "—";
-  tr.appendChild(tdAcc);
-
-  // 6. Acceptance@pos sparkline
-  var tdSpark = el("td");
-  tdSpark.appendChild(sparkline(m.metrics && m.metrics.acceptance_at_pos));
-  tr.appendChild(tdSpark);
-
-  // 7. GPUs
-  tr.appendChild(el("td", null, m.gpus || "—"));
-
-  // 8. Evaluated date
-  tr.appendChild(el("td", null, relativeDate(m.evaluated_at)));
-
-  return tr;
+function formatHardware(gpus) {
+  if (!gpus) return "—";
+  // Convert "1xa100" to "1x A100", "4xh100" to "4x H100"
+  var match = gpus.match(/^(\d+)x(.+)$/i);
+  if (match) return match[1] + "x " + match[2].toUpperCase();
+  return gpus;
 }
 
-function detailRow(m, opts) {
-  var tr = el("tr", "detail-row");
-  var td = el("td");
-  td.colSpan = opts.hasThroughput ? 8 : 6;
-  var panel = el("div", "detail-panel");
+// ── Deploy Panel Builder ─────────────────────────────────────
 
-  // Error text if failed
-  if (m.error) {
-    var errorHeader = el("h3", null, "Error");
-    panel.appendChild(errorHeader);
-    panel.appendChild(el("div", "error-text", m.error));
+function renderDeployPanel(m) {
+  var panel = h("div", { className: "deploy-panel" });
+  panel.appendChild(h("div", { className: "deploy-panel-title" }, "Deploy with vLLM"));
+
+  var cmd = m.deploy && m.deploy.command;
+  if (!cmd) {
+    panel.appendChild(h("div", { className: "deploy-pending" }, "Command pending evaluation"));
+    return panel;
   }
 
+  var codeWrap = h("div", { className: "code-block" });
+
+  // Syntax highlight the command
+  var parts = cmd.split(" ");
+  var htmlParts = [];
+  var i = 0;
+  while (i < parts.length) {
+    var part = parts[i];
+    if (i <= 1) {
+      // "vllm serve" or first two words
+      htmlParts.push('<span class="cmd">' + escapeHtml(part) + '</span>');
+    } else if (part.charAt(0) === "-") {
+      htmlParts.push('<span class="flag">' + escapeHtml(part) + '</span>');
+    } else {
+      htmlParts.push('<span class="val">' + escapeHtml(part) + '</span>');
+    }
+    i++;
+  }
+  codeWrap.innerHTML = htmlParts.join(" ");
+
+  var copyBtn = h("button", {
+    className: "copy-btn",
+    onClick: function (e) {
+      e.stopPropagation();
+      copyToClipboard(cmd, copyBtn);
+    }
+  }, "Copy");
+  codeWrap.appendChild(copyBtn);
+  panel.appendChild(codeWrap);
+
+  var meta = h("div", { className: "deploy-meta" });
+  meta.appendChild(h("span", null, formatHardware(m.gpus) + " evaluated"));
+  meta.appendChild(h("span", null, "vLLM auto-detects algorithm & target"));
+  panel.appendChild(meta);
+
+  return panel;
+}
+
+function escapeHtml(str) {
+  var div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ── Subset Table Builder ─────────────────────────────────────
+
+function renderSubsetTable(m) {
   var subsets = m.metrics && m.metrics.subsets;
-  var hasSubsets = subsets && Object.keys(subsets).length > 0;
-
-  if (hasSubsets) {
-    var subsetNames = Object.keys(subsets);
-
-    // Left: detail-stats table
-    var statsDiv = el("div", "detail-stats");
-    var statsTable = el("table");
-    var stHead = el("thead");
-    var stHr = el("tr");
-    var headers = ["Subset", "Throughput", "Speedup", "Accept. Len", "Drafts"];
-    headers.forEach(function (h) { stHr.appendChild(el("th", null, h)); });
-    stHead.appendChild(stHr);
-    statsTable.appendChild(stHead);
-
-    var stBody = el("tbody");
-    subsetNames.forEach(function (name) {
-      var s = subsets[name];
-      var row = el("tr");
-      row.appendChild(el("td", null, name));
-
-      // Throughput
-      var stTp = el("td", "col-metric");
-      if (s.throughput_tps != null) {
-        stTp.textContent = Math.round(s.throughput_tps).toLocaleString() + " tok/s";
-      } else {
-        stTp.textContent = "—";
-      }
-      row.appendChild(stTp);
-
-      // Speedup
-      var stSp = el("td", "col-metric");
-      if (s.speedup != null) {
-        stSp.textContent = s.speedup.toFixed(2) + "x";
-      } else {
-        stSp.textContent = "—";
-      }
-      row.appendChild(stSp);
-
-      // Acceptance length
-      var stAl = el("td", "col-metric");
-      if (s.acceptance_length != null) {
-        stAl.textContent = s.acceptance_length.toFixed(2);
-      } else {
-        stAl.textContent = "—";
-      }
-      row.appendChild(stAl);
-
-      // Num drafts
-      var stDr = el("td", "col-metric");
-      stDr.textContent = s.num_drafts != null ? s.num_drafts.toLocaleString() : "—";
-      row.appendChild(stDr);
-
-      stBody.appendChild(row);
-    });
-    statsTable.appendChild(stBody);
-    statsDiv.appendChild(statsTable);
-    panel.appendChild(statsDiv);
-
-    // Right: ECharts chart for acceptance@pos per subset
-    var chartDiv = el("div", "detail-chart");
-    var chartId = detailContainerId(m.model, "pos");
-    chartDiv.id = chartId;
-    panel.appendChild(chartDiv);
+  if (!subsets || Object.keys(subsets).length === 0) {
+    return h("div", { className: "deploy-pending" }, "No per-subset data available");
   }
 
-  // Fallback: if no subsets but has position data, show text
-  var pos = m.metrics && m.metrics.acceptance_at_pos;
-  if (!hasSubsets && Array.isArray(pos) && pos.length > 0) {
-    panel.appendChild(el("h3", null, "Acceptance rate by draft position"));
-    var posText = pos.map(function (v, i) {
-      return "Position " + (i + 1) + ": " + (Number(v) || 0).toFixed(2);
-    }).join("  |  ");
-    var posDiv = el("div", "mono");
-    posDiv.style.gridColumn = "1 / -1";
-    posDiv.style.color = "#8b949e";
-    posDiv.textContent = posText;
-    panel.appendChild(posDiv);
-  }
+  var subs = Object.keys(subsets).map(function (k) {
+    return Object.assign({ name: k }, subsets[k]);
+  });
 
-  td.appendChild(panel);
-  tr.appendChild(td);
+  // Determine best values for green highlighting
+  var vals = { throughput: [], acceptance_length: [], ttft_ms: [], itl_ms: [] };
+  subs.forEach(function (s) {
+    if (s.throughput_tps != null) vals.throughput.push(s.throughput_tps);
+    if (s.acceptance_length != null) vals.acceptance_length.push(s.acceptance_length);
+    if (s.ttft_ms != null) vals.ttft_ms.push(s.ttft_ms);
+    if (s.itl_ms != null) vals.itl_ms.push(s.itl_ms);
+  });
+  var bestTp = vals.throughput.length > 0 ? Math.max.apply(null, vals.throughput) : null;
+  var bestAl = vals.acceptance_length.length > 0 ? Math.max.apply(null, vals.acceptance_length) : null;
+  var bestTtft = vals.ttft_ms.length > 0 ? Math.min.apply(null, vals.ttft_ms) : null;
+  var bestItl = vals.itl_ms.length > 0 ? Math.min.apply(null, vals.itl_ms) : null;
 
-  // Render ECharts after the DOM nodes are attached
-  if (hasSubsets) {
-    setTimeout(function () {
-      Charts.subsetPositions(detailContainerId(m.model, "pos"), m);
-    }, 0);
-  }
+  var table = h("table", { className: "subset-tbl" });
+  var thead = h("thead");
+  var hr = h("tr");
+  ["Subset", "Throughput", "Accept. Len", "TTFT", "ITL"].forEach(function (t, i) {
+    hr.appendChild(h("th", { className: i > 0 ? "num" : "" }, t));
+  });
+  thead.appendChild(hr);
+  table.appendChild(thead);
 
-  return tr;
+  var tbody = h("tbody");
+  subs.forEach(function (s) {
+    var tr = h("tr");
+    tr.appendChild(h("td", { className: "subset-name" }, s.name));
+
+    // Throughput
+    var tdTp = h("td", { className: "num" + (s.throughput_tps != null && s.throughput_tps === bestTp ? " best" : "") });
+    if (s.throughput_tps != null) {
+      tdTp.innerHTML = Math.round(s.throughput_tps).toLocaleString() + '<span class="unit">tok/s</span>';
+    } else {
+      tdTp.textContent = "—";
+    }
+    tr.appendChild(tdTp);
+
+    // Acceptance length
+    var alVal = s.acceptance_length;
+    tr.appendChild(h("td", {
+      className: "num" + (alVal != null && alVal === bestAl ? " best" : "")
+    }, alVal != null ? alVal.toFixed(2) : "—"));
+
+    // TTFT
+    var tdTtft = h("td", { className: "num" + (s.ttft_ms != null && s.ttft_ms === bestTtft ? " best" : "") });
+    if (s.ttft_ms != null) {
+      tdTtft.innerHTML = s.ttft_ms.toFixed(1) + '<span class="unit">ms</span>';
+    } else {
+      tdTtft.textContent = "—";
+    }
+    tr.appendChild(tdTtft);
+
+    // ITL
+    var tdItl = h("td", { className: "num" + (s.itl_ms != null && s.itl_ms === bestItl ? " best" : "") });
+    if (s.itl_ms != null) {
+      tdItl.innerHTML = s.itl_ms.toFixed(1) + '<span class="unit">ms</span>';
+    } else {
+      tdItl.textContent = "—";
+    }
+    tr.appendChild(tdItl);
+
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  return table;
 }
 
-// ── Public Methods ────────────────────────────────────────────
+// ── Public Methods ───────────────────────────────────────────
 
 Render.fmtDate = fmtDate;
 
 Render.stats = function (filtered, hasThroughput) {
   var ok = filtered.filter(function (m) { return m.status === "ok"; });
 
-  // Models evaluated
   var statModelsEl = document.getElementById("stat-models");
   if (statModelsEl) statModelsEl.textContent = ok.length;
 
-  // Best speedup or acceptance length
   var statBestEl = document.getElementById("stat-best");
   var statBestLabelEl = document.getElementById("stat-best-label");
 
@@ -297,27 +234,51 @@ Render.stats = function (filtered, hasThroughput) {
     var best = null;
     var bestModel = null;
     ok.forEach(function (m) {
-      var s = m.speedup;
+      var s = m._speedup;
       if (s !== null && (best === null || s > best)) { best = s; bestModel = m; }
     });
     if (statBestEl) statBestEl.textContent = best !== null ? best.toFixed(1) + "x" : "—";
-    if (statBestLabelEl) statBestLabelEl.textContent = bestModel ? bestModel.shortName : "Best Speedup";
+    if (statBestLabelEl) statBestLabelEl.textContent = bestModel ? bestModel._shortName : "Best Speedup";
   } else {
     var bestAcc = null;
     var bestAccModel = null;
     ok.forEach(function (m) {
-      var v = m.acceptanceLength;
+      var v = m._acceptanceLength;
       if (v !== null && (bestAcc === null || v > bestAcc)) { bestAcc = v; bestAccModel = m; }
     });
     if (statBestEl) statBestEl.textContent = bestAcc !== null ? bestAcc.toFixed(2) : "—";
-    if (statBestLabelEl) statBestLabelEl.textContent = bestAccModel ? bestAccModel.shortName : "Best Accept. Len";
+    if (statBestLabelEl) statBestLabelEl.textContent = bestAccModel ? bestAccModel._shortName : "Best Accept. Len";
   }
 
-  // Algorithms compared
   var algos = {};
   ok.forEach(function (m) { if (m.algorithm) algos[m.algorithm] = true; });
   var statAlgosEl = document.getElementById("stat-algos");
   if (statAlgosEl) statAlgosEl.textContent = Object.keys(algos).length;
+};
+
+Render.targetTabs = function (tabs, activeTarget, totalCount, onSelect) {
+  var container = document.getElementById("target-tabs");
+  if (!container) return;
+  container.textContent = "";
+
+  // "All Targets" tab
+  var allTab = h("button", {
+    className: "target-tab" + (activeTarget === "all" ? " active" : ""),
+    "data-target": "all",
+    onClick: function () { onSelect("all"); }
+  });
+  allTab.innerHTML = 'All Targets <span class="tab-count">' + totalCount + '</span>';
+  container.appendChild(allTab);
+
+  tabs.forEach(function (t) {
+    var tab = h("button", {
+      className: "target-tab" + (activeTarget === t.family ? " active" : ""),
+      "data-target": t.family,
+      onClick: function () { onSelect(t.family); }
+    });
+    tab.innerHTML = escapeHtml(t.family) + ' <span class="tab-count">' + t.count + '</span>';
+    container.appendChild(tab);
+  });
 };
 
 Render.table = function (filtered, opts) {
@@ -327,16 +288,10 @@ Render.table = function (filtered, opts) {
   if (!tbody) return;
   tbody.textContent = "";
 
-  var thThroughput = document.querySelector('#models-table th[data-key="throughput_tps"]');
-  var thSpeedup = document.querySelector('#models-table th[data-key="speedup"]');
-  if (thThroughput) thThroughput.hidden = !opts.hasThroughput;
-  if (thSpeedup) thSpeedup.hidden = !opts.hasThroughput;
-
-  var rows = filtered;
   var placeholder = document.getElementById("placeholder");
   var table = document.getElementById("models-table");
 
-  if (rows.length === 0) {
+  if (filtered.length === 0) {
     if (table) table.hidden = true;
     if (placeholder) {
       placeholder.hidden = false;
@@ -349,14 +304,197 @@ Render.table = function (filtered, opts) {
   if (table) table.hidden = false;
   if (placeholder) placeholder.hidden = true;
 
-  for (var i = 0; i < rows.length; i++) {
-    var m = rows[i];
-    tbody.appendChild(modelRow(m, opts));
-    if (opts.expandedModel === m.model) {
-      tbody.appendChild(detailRow(m, opts));
+  // Render sort arrows on headers
+  var ths = document.querySelectorAll("#models-table th");
+  ths.forEach(function (th) {
+    var old = th.querySelector(".sort-arrow");
+    if (old) old.remove();
+    if (th.dataset.key === opts.sortKey) {
+      th.appendChild(h("span", { className: "sort-arrow" }, opts.sortDir === "asc" ? "▲" : "▼"));
+    }
+  });
+
+  for (var i = 0; i < filtered.length; i++) {
+    var m = filtered[i];
+    var isExpanded = opts.expandedModel === m.model;
+    var isDeployOpen = opts.deployOpen === m.model && !isExpanded;
+
+    // ── Model Row ──
+    var classes = "model-row";
+    if (m.status === "failed") classes += " failed-row";
+    if (isExpanded) classes += " expanded";
+
+    var tr = h("tr", { className: classes });
+    (function (model) {
+      tr.addEventListener("click", function (e) {
+        if (e.target.closest(".deploy-btn")) return;
+        opts.onToggleExpand(model.model);
+      });
+    })(m);
+
+    // 1. Drafter column
+    var tdDrafter = h("td");
+    var nameWrap = h("div", { className: "va-model-name" });
+    var link = h("a", {
+      href: "https://huggingface.co/" + encodeURI(m.model),
+      target: "_blank",
+      rel: "noopener noreferrer",
+      onClick: function (e) { e.stopPropagation(); }
+    }, m._shortName || "—");
+    nameWrap.appendChild(link);
+    nameWrap.appendChild(document.createTextNode(" "));
+    nameWrap.appendChild(h("span", { className: "algo-badge " + algoClass(m.algorithm) }, m.algorithm || "other"));
+    // Show target family when "All Targets" tab is active
+    if (opts.activeTarget === "all") {
+      nameWrap.appendChild(h("small", null, m._targetFamily || ""));
+    }
+    tdDrafter.appendChild(nameWrap);
+    tr.appendChild(tdDrafter);
+
+    // 2. Throughput
+    var tdThroughput = h("td", { className: "right" });
+    if (m._throughput !== null) {
+      tdThroughput.appendChild(h("span", {
+        style: { fontFamily: "var(--mono)", fontWeight: "700", fontSize: "15px" }
+      }, Math.round(m._throughput).toLocaleString()));
+      tdThroughput.appendChild(h("span", {
+        style: { fontSize: "11px", color: "var(--text-3)", marginLeft: "4px" }
+      }, "tok/s"));
+    } else {
+      tdThroughput.textContent = "—";
+    }
+    tr.appendChild(tdThroughput);
+
+    // 3. Speedup badge
+    var tdSpeedup = h("td", { className: "right" });
+    if (m._speedup !== null) {
+      tdSpeedup.appendChild(h("span", {
+        className: "spd-badge " + spdClass(m._speedup)
+      }, m._speedup.toFixed(1) + "x"));
+    } else {
+      tdSpeedup.textContent = "—";
+    }
+    tr.appendChild(tdSpeedup);
+
+    // 4. Acceptance length
+    var tdAcc = h("td", {
+      className: "right",
+      style: { fontFamily: "var(--mono)", fontWeight: "600", fontSize: "15px" }
+    }, m._acceptanceLength !== null ? m._acceptanceLength.toFixed(2) : "—");
+    tr.appendChild(tdAcc);
+
+    // 5. TTFT
+    var tdTtft = h("td", { className: "right" });
+    if (m._ttft !== null) {
+      tdTtft.appendChild(h("span", {
+        style: { fontFamily: "var(--mono)", fontWeight: "600", fontSize: "15px" }
+      }, m._ttft.toFixed(1)));
+      tdTtft.appendChild(h("span", {
+        style: { fontSize: "11px", color: "var(--text-3)", marginLeft: "3px" }
+      }, "ms"));
+    } else {
+      tdTtft.textContent = "—";
+    }
+    tr.appendChild(tdTtft);
+
+    // 6. ITL
+    var tdItl = h("td", { className: "right" });
+    if (m._itl !== null) {
+      tdItl.appendChild(h("span", {
+        style: { fontFamily: "var(--mono)", fontWeight: "600", fontSize: "15px" }
+      }, m._itl.toFixed(1)));
+      tdItl.appendChild(h("span", {
+        style: { fontSize: "11px", color: "var(--text-3)", marginLeft: "3px" }
+      }, "ms"));
+    } else {
+      tdItl.textContent = "—";
+    }
+    tr.appendChild(tdItl);
+
+    // 7. Accept@pos sparkline
+    var tdSpark = h("td");
+    tdSpark.appendChild(sparkline(m.metrics && m.metrics.acceptance_at_pos));
+    tr.appendChild(tdSpark);
+
+    // 8. Hardware chip
+    var tdHw = h("td");
+    tdHw.appendChild(h("span", { className: "hw-chip" }, formatHardware(m.gpus)));
+    tr.appendChild(tdHw);
+
+    // 9. Deploy button
+    var tdDeploy = h("td");
+    var dBtn = h("button", { className: "deploy-btn" });
+    dBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg> Deploy';
+    (function (model) {
+      dBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        opts.onToggleDeploy(model.model);
+      });
+    })(m);
+    tdDeploy.appendChild(dBtn);
+    tr.appendChild(tdDeploy);
+
+    tbody.appendChild(tr);
+
+    // ── Detail Row (expanded) ──
+    if (isExpanded) {
+      var detailTr = h("tr", { className: "va-detail" });
+      var detailTd = h("td", { colSpan: 9 });
+      var inner = h("div", { className: "va-detail-inner" });
+
+      // Detail tabs
+      var tabs = h("div", { className: "detail-tabs" });
+      var metricsTab = h("button", { className: "detail-tab active" }, "Metrics");
+      var deployTab = h("button", { className: "detail-tab" }, "Deploy");
+      tabs.appendChild(metricsTab);
+      tabs.appendChild(deployTab);
+      inner.appendChild(tabs);
+
+      // Metrics pane
+      var metricsPane = h("div", { style: { padding: "16px 0" } });
+      // Error text if failed
+      if (m.error) {
+        metricsPane.appendChild(h("div", {
+          style: { color: "var(--red)", marginBottom: "12px", fontWeight: "600" }
+        }, "Error: " + m.error));
+      }
+      metricsPane.appendChild(renderSubsetTable(m));
+      inner.appendChild(metricsPane);
+
+      // Deploy pane
+      var deployPane = h("div", { style: { display: "none", padding: "16px 0" } });
+      deployPane.appendChild(renderDeployPanel(m));
+      inner.appendChild(deployPane);
+
+      metricsTab.addEventListener("click", function (e) {
+        e.stopPropagation();
+        metricsTab.classList.add("active");
+        deployTab.classList.remove("active");
+        metricsPane.style.display = "";
+        deployPane.style.display = "none";
+      });
+      deployTab.addEventListener("click", function (e) {
+        e.stopPropagation();
+        deployTab.classList.add("active");
+        metricsTab.classList.remove("active");
+        deployPane.style.display = "";
+        metricsPane.style.display = "none";
+      });
+
+      detailTd.appendChild(inner);
+      detailTr.appendChild(detailTd);
+      tbody.appendChild(detailTr);
+    }
+
+    // ── Standalone deploy panel (from button, row not expanded) ──
+    if (isDeployOpen) {
+      var dpTr = h("tr", { className: "deploy-row" });
+      var dpTd = h("td", { colSpan: 9 });
+      dpTd.appendChild(renderDeployPanel(m));
+      dpTr.appendChild(dpTd);
+      tbody.appendChild(dpTr);
     }
   }
-  renderSortIndicators(opts.sortKey, opts.sortDir);
 };
 
 Render.chart = function (filtered, opts) {

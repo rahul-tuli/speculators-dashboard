@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Speculators Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,36 +18,36 @@
       </div>
       <p class="hero-subtitle">Find the fastest speculative decoding drafter for your model</p>
       <div class="hero-links">
-        <a href="https://huggingface.co/collections/RedHatAI/speculator-models" target="_blank" rel="noopener" class="hero-btn hero-btn--primary">Browse Models</a>
-        <a href="https://github.com/vllm-project/speculators" target="_blank" rel="noopener" class="hero-btn hero-btn--ghost">GitHub</a>
+        <a href="https://huggingface.co/collections/RedHatAI/speculator-models" target="_blank" rel="noopener" class="btn btn-primary">Browse Models</a>
+        <a href="https://github.com/vllm-project/speculators" target="_blank" rel="noopener" class="btn btn-ghost">GitHub</a>
       </div>
       <div class="hero-meta">
-        <span id="last-updated">Last updated: —</span>
+        <span id="last-updated">Last updated: &mdash;</span>
       </div>
     </div>
   </header>
 
-  <!-- Stats Row: 3 cards -->
+  <!-- Stats Row -->
   <section class="stats" id="stats">
     <div class="stat-card">
-      <div class="stat-value" id="stat-models">—</div>
+      <div class="stat-val" id="stat-models">&mdash;</div>
       <div class="stat-label">Models Evaluated</div>
     </div>
-    <div class="stat-card stat-card--accent">
-      <div class="stat-value" id="stat-best">—</div>
+    <div class="stat-card accent-left">
+      <div class="stat-val" id="stat-best">&mdash;</div>
       <div class="stat-label" id="stat-best-label">Best Speedup</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value" id="stat-algos">—</div>
+      <div class="stat-val" id="stat-algos">&mdash;</div>
       <div class="stat-label">Algorithms Compared</div>
     </div>
   </section>
 
+  <!-- Target Tabs -->
+  <div class="target-tabs" id="target-tabs"></div>
+
   <!-- Filter Bar -->
   <div class="filters" id="filters">
-    <select id="filter-target" aria-label="Filter by target model">
-      <option value="all">All Targets</option>
-    </select>
     <select id="filter-algorithm" aria-label="Filter by algorithm">
       <option value="all">All Algorithms</option>
     </select>
@@ -56,21 +56,24 @@
 
   <!-- Main Table -->
   <div class="table-wrap">
-    <table id="models-table">
-      <thead>
-        <tr>
-          <th data-key="model">Drafter</th>
-          <th data-key="target">Target</th>
-          <th data-key="throughput_tps" class="col-metric">Throughput</th>
-          <th data-key="speedup" class="col-metric">Speedup</th>
-          <th data-key="acceptance_length" class="col-metric">Accept. Len</th>
-          <th data-key="acceptance_at_pos">Acceptance@pos</th>
-          <th data-key="gpus">GPUs</th>
-          <th data-key="evaluated_at">Evaluated</th>
-        </tr>
-      </thead>
-      <tbody id="models-tbody"></tbody>
-    </table>
+    <div class="va-table-wrap">
+      <table id="models-table" class="va-table">
+        <thead>
+          <tr>
+            <th data-key="model">Drafter</th>
+            <th data-key="throughput_tps" class="right">Throughput</th>
+            <th data-key="speedup" class="right">Speedup</th>
+            <th data-key="acceptance_length" class="right">Accept. Len</th>
+            <th data-key="ttft_ms" class="right">TTFT</th>
+            <th data-key="itl_ms" class="right">ITL</th>
+            <th data-key="acceptance_at_pos">Accept@pos</th>
+            <th data-key="gpus">Hardware</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="models-tbody"></tbody>
+      </table>
+    </div>
     <div id="placeholder" class="placeholder" hidden></div>
   </div>
 
@@ -83,7 +86,7 @@
 
   <!-- Footer -->
   <footer class="site-footer">
-    Data source: <code>results.json</code> · Powered by <a href="https://github.com/vllm-project/speculators" target="_blank" rel="noopener">vllm-project/speculators</a>
+    Data source: <code>results.json</code> &middot; Powered by <a href="https://github.com/vllm-project/speculators" target="_blank" rel="noopener">vllm-project/speculators</a>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>

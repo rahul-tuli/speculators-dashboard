@@ -1,9 +1,8 @@
 "use strict";
 
 /* ============================================================
-   Speculators Dashboard v2 — app.js
-   Thin orchestrator: state, filters, sort wiring, init.
-   Loaded after render.js and data.js.
+   Speculators Dashboard — app.js
+   State management and orchestration (Variant A design).
    ============================================================ */
 
 // ── Constants ─────────────────────────────────────────────────
@@ -28,7 +27,8 @@ var state = {
   sortDir: "desc",
   filters: { target: "all", algorithm: "all", text: "" },
   expandedModel: null,
-  uniqueTargets: [],
+  deployOpen: null,
+  targetTabs: [],
   uniqueAlgorithms: [],
   hasThroughput: false,
 };
@@ -36,16 +36,6 @@ var state = {
 // ── Filter Controls ───────────────────────────────────────────
 
 function populateFilters() {
-  var targetSel = document.getElementById("filter-target");
-  if (targetSel) {
-    state.uniqueTargets.forEach(function (t) {
-      var opt = document.createElement("option");
-      opt.value = t;
-      opt.textContent = Data.targetFamily(t);
-      targetSel.appendChild(opt);
-    });
-  }
-
   var algoSel = document.getElementById("filter-algorithm");
   if (algoSel) {
     state.uniqueAlgorithms.forEach(function (a) {
@@ -58,14 +48,6 @@ function populateFilters() {
 }
 
 function setupFilterListeners() {
-  var targetSel = document.getElementById("filter-target");
-  if (targetSel) {
-    targetSel.addEventListener("change", function (e) {
-      state.filters.target = e.target.value;
-      onFilterChange();
-    });
-  }
-
   var algoSel = document.getElementById("filter-algorithm");
   if (algoSel) {
     algoSel.addEventListener("change", function (e) {
@@ -101,7 +83,10 @@ function setupSortListeners() {
         state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
       } else {
         state.sortKey = key;
-        state.sortDir = (key === "model" || key === "target" || key === "gpus") ? "asc" : "desc";
+        // Default sort direction: ascending for text columns, descending for metrics
+        // TTFT and ITL are "lower is better" so default descending still shows high first,
+        // user can toggle to asc to see lowest first
+        state.sortDir = (key === "model" || key === "gpus") ? "asc" : "desc";
       }
       Data.sort(state.filtered, state.sortKey, state.sortDir);
       renderAll();
@@ -113,17 +98,30 @@ function setupSortListeners() {
 
 function renderAll() {
   Render.stats(state.filtered, state.hasThroughput);
+
+  Render.targetTabs(state.targetTabs, state.filters.target, state.raw.length, function (target) {
+    state.filters.target = target;
+    onFilterChange();
+  });
+
   Render.table(state.filtered, {
     hasThroughput: state.hasThroughput,
     expandedModel: state.expandedModel,
+    deployOpen: state.deployOpen,
+    activeTarget: state.filters.target,
     sortKey: state.sortKey,
     sortDir: state.sortDir,
     rawCount: state.raw.length,
     onToggleExpand: function (model) {
       state.expandedModel = state.expandedModel === model ? null : model;
       renderAll();
+    },
+    onToggleDeploy: function (model) {
+      state.deployOpen = state.deployOpen === model ? null : model;
+      renderAll();
     }
   });
+
   Render.chart(state.filtered, {
     hasThroughput: state.hasThroughput,
     algoColors: ALGO_COLORS,
@@ -156,9 +154,9 @@ function init() {
 
     state.raw = result.data.models;
     var info = Data.process(state.raw);
-    state.uniqueTargets = info.uniqueTargets;
     state.uniqueAlgorithms = info.uniqueAlgorithms;
     state.hasThroughput = info.hasThroughput;
+    state.targetTabs = Data.targetTabs(state.raw);
     populateFilters();
 
     var lastUpdatedEl = document.getElementById("last-updated");

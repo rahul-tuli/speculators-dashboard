@@ -12,38 +12,43 @@
       "status": "ok",
       "metrics": {
         "acceptance_length": 2.71,
-        "acceptance_at_pos": [
-          0.82,
-          0.55,
-          0.34
-        ],
+        "acceptance_at_pos": [0.82, 0.55, 0.34],
         "num_drafts": 800,
+        "throughput_tps": 891,
+        "speedup": 2.22,
+        "ttft_ms": 39.8,
+        "itl_ms": 17.4,
         "subsets": {
           "HumanEval": {
             "acceptance_length": 2.65,
             "num_drafts": 400,
             "num_draft_tokens": 1200,
             "num_accepted_tokens": 660,
-            "acceptance_at_pos": [
-              0.8,
-              0.53,
-              0.32
-            ]
+            "acceptance_at_pos": [0.80, 0.53, 0.32],
+            "throughput_tps": 935,
+            "speedup": 2.35,
+            "ttft_ms": 39.2,
+            "itl_ms": 16.2
           },
           "qa": {
             "acceptance_length": 2.77,
             "num_drafts": 400,
             "num_draft_tokens": 1200,
             "num_accepted_tokens": 708,
-            "acceptance_at_pos": [
-              0.84,
-              0.57,
-              0.36
-            ]
+            "acceptance_at_pos": [0.84, 0.57, 0.36],
+            "throughput_tps": 862,
+            "speedup": 2.14,
+            "ttft_ms": 40.5,
+            "itl_ms": 18.1
           }
         }
       },
-      "error": null
+      "error": null,
+      "deploy": {
+        "command": "vllm serve Qwen/Qwen3-8B --speculative-model RedHatAI/Qwen3-8B_speculators_eagle3_2l",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
     },
     {
       "model": "RedHatAI/Qwen3-8B_speculators_dflash_2l",
@@ -56,41 +61,43 @@
       "status": "ok",
       "metrics": {
         "acceptance_length": 2.55,
-        "acceptance_at_pos": [
-          0.72,
-          0.42,
-          0.25,
-          0.16
-        ],
+        "acceptance_at_pos": [0.72, 0.42, 0.25, 0.16],
         "num_drafts": 800,
+        "throughput_tps": 792,
+        "speedup": 1.96,
+        "ttft_ms": 38.4,
+        "itl_ms": 19.7,
         "subsets": {
           "HumanEval": {
             "acceptance_length": 2.49,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 596,
-            "acceptance_at_pos": [
-              0.7,
-              0.4,
-              0.23,
-              0.16
-            ]
+            "acceptance_at_pos": [0.70, 0.40, 0.23, 0.16],
+            "throughput_tps": 830,
+            "speedup": 2.06,
+            "ttft_ms": 38.0,
+            "itl_ms": 18.5
           },
           "qa": {
             "acceptance_length": 2.61,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 644,
-            "acceptance_at_pos": [
-              0.74,
-              0.44,
-              0.27,
-              0.16
-            ]
+            "acceptance_at_pos": [0.74, 0.44, 0.27, 0.16],
+            "throughput_tps": 760,
+            "speedup": 1.88,
+            "ttft_ms": 39.2,
+            "itl_ms": 20.8
           }
         }
       },
-      "error": null
+      "error": null,
+      "deploy": {
+        "command": "vllm serve Qwen/Qwen3-8B --speculative-model RedHatAI/Qwen3-8B_speculators_dflash_2l",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
     },
     {
       "model": "RedHatAI/Qwen3-8B_speculators_mtp",
@@ -103,41 +110,43 @@
       "status": "ok",
       "metrics": {
         "acceptance_length": 2.38,
-        "acceptance_at_pos": [
-          0.65,
-          0.38,
-          0.22,
-          0.13
-        ],
+        "acceptance_at_pos": [0.65, 0.38, 0.22, 0.13],
         "num_drafts": 800,
+        "throughput_tps": 760,
+        "speedup": 1.89,
+        "ttft_ms": 44.6,
+        "itl_ms": 20.3,
         "subsets": {
           "HumanEval": {
             "acceptance_length": 2.32,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 528,
-            "acceptance_at_pos": [
-              0.63,
-              0.36,
-              0.2,
-              0.13
-            ]
+            "acceptance_at_pos": [0.63, 0.36, 0.20, 0.13],
+            "throughput_tps": 795,
+            "speedup": 1.97,
+            "ttft_ms": 44.0,
+            "itl_ms": 19.2
           },
           "qa": {
             "acceptance_length": 2.44,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 576,
-            "acceptance_at_pos": [
-              0.67,
-              0.4,
-              0.24,
-              0.13
-            ]
+            "acceptance_at_pos": [0.67, 0.40, 0.24, 0.13],
+            "throughput_tps": 730,
+            "speedup": 1.81,
+            "ttft_ms": 45.5,
+            "itl_ms": 21.1
           }
         }
       },
-      "error": null
+      "error": null,
+      "deploy": {
+        "command": "vllm serve Qwen/Qwen3-8B --speculative-config '{\"method\": \"mtp\"}'",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
     },
     {
       "model": "RedHatAI/Llama-3.1-8B-Instruct_speculators_eagle3_2l",
@@ -146,45 +155,47 @@
       "num_speculative_tokens": 4,
       "hf_last_modified": "2025-07-05T14:45:00Z",
       "evaluated_at": "2025-07-12T11:00:00Z",
-      "gpus": "1xa100",
+      "gpus": "1xh100",
       "status": "ok",
       "metrics": {
         "acceptance_length": 3.12,
-        "acceptance_at_pos": [
-          0.88,
-          0.58,
-          0.38,
-          0.28
-        ],
+        "acceptance_at_pos": [0.88, 0.58, 0.38, 0.28],
         "num_drafts": 800,
+        "throughput_tps": 847,
+        "speedup": 2.1,
+        "ttft_ms": 42.1,
+        "itl_ms": 18.3,
         "subsets": {
           "HumanEval": {
             "acceptance_length": 3.04,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 816,
-            "acceptance_at_pos": [
-              0.86,
-              0.56,
-              0.36,
-              0.26
-            ]
+            "acceptance_at_pos": [0.86, 0.56, 0.36, 0.26],
+            "throughput_tps": 912,
+            "speedup": 2.26,
+            "ttft_ms": 42.1,
+            "itl_ms": 16.8
           },
           "qa": {
-            "acceptance_length": 3.2,
+            "acceptance_length": 3.20,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 880,
-            "acceptance_at_pos": [
-              0.9,
-              0.6,
-              0.4,
-              0.3
-            ]
+            "acceptance_at_pos": [0.90, 0.60, 0.40, 0.30],
+            "throughput_tps": 834,
+            "speedup": 2.07,
+            "ttft_ms": 41.8,
+            "itl_ms": 17.9
           }
         }
       },
-      "error": null
+      "error": null,
+      "deploy": {
+        "command": "vllm serve meta-llama/Llama-3.1-8B-Instruct --speculative-model RedHatAI/Llama-3.1-8B-Instruct_speculators_eagle3_2l",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
     },
     {
       "model": "RedHatAI/Llama-3.1-8B-Instruct_speculators_dflash_2l",
@@ -193,48 +204,47 @@
       "num_speculative_tokens": 5,
       "hf_last_modified": "2025-07-06T10:20:00Z",
       "evaluated_at": "2025-07-13T08:15:00Z",
-      "gpus": "1xa100",
+      "gpus": "1xh100",
       "status": "ok",
       "metrics": {
         "acceptance_length": 3.42,
-        "acceptance_at_pos": [
-          0.89,
-          0.62,
-          0.42,
-          0.3,
-          0.19
-        ],
+        "acceptance_at_pos": [0.89, 0.62, 0.42, 0.30, 0.19],
         "num_drafts": 800,
+        "throughput_tps": 792,
+        "speedup": 1.96,
+        "ttft_ms": 38.4,
+        "itl_ms": 19.7,
         "subsets": {
           "HumanEval": {
             "acceptance_length": 3.34,
             "num_drafts": 400,
             "num_draft_tokens": 2000,
             "num_accepted_tokens": 936,
-            "acceptance_at_pos": [
-              0.87,
-              0.6,
-              0.4,
-              0.28,
-              0.19
-            ]
+            "acceptance_at_pos": [0.87, 0.60, 0.40, 0.28, 0.19],
+            "throughput_tps": 830,
+            "speedup": 2.06,
+            "ttft_ms": 38.0,
+            "itl_ms": 18.5
           },
           "qa": {
-            "acceptance_length": 3.5,
+            "acceptance_length": 3.50,
             "num_drafts": 400,
             "num_draft_tokens": 2000,
             "num_accepted_tokens": 1000,
-            "acceptance_at_pos": [
-              0.91,
-              0.64,
-              0.44,
-              0.32,
-              0.19
-            ]
+            "acceptance_at_pos": [0.91, 0.64, 0.44, 0.32, 0.19],
+            "throughput_tps": 760,
+            "speedup": 1.88,
+            "ttft_ms": 39.2,
+            "itl_ms": 20.8
           }
         }
       },
-      "error": null
+      "error": null,
+      "deploy": {
+        "command": "vllm serve meta-llama/Llama-3.1-8B-Instruct --speculative-model RedHatAI/Llama-3.1-8B-Instruct_speculators_dflash_2l",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
     },
     {
       "model": "RedHatAI/Llama-3.1-8B-Instruct_speculators_peagle_2l",
@@ -243,45 +253,47 @@
       "num_speculative_tokens": 4,
       "hf_last_modified": "2025-07-07T16:30:00Z",
       "evaluated_at": "2025-07-14T10:45:00Z",
-      "gpus": "1xa100",
+      "gpus": "1xh100",
       "status": "ok",
       "metrics": {
         "acceptance_length": 2.89,
-        "acceptance_at_pos": [
-          0.8,
-          0.52,
-          0.34,
-          0.23
-        ],
+        "acceptance_at_pos": [0.80, 0.52, 0.34, 0.23],
         "num_drafts": 800,
+        "throughput_tps": 823,
+        "speedup": 2.04,
+        "ttft_ms": 40.5,
+        "itl_ms": 18.9,
         "subsets": {
           "HumanEval": {
             "acceptance_length": 2.83,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 732,
-            "acceptance_at_pos": [
-              0.78,
-              0.5,
-              0.32,
-              0.23
-            ]
+            "acceptance_at_pos": [0.78, 0.50, 0.32, 0.23],
+            "throughput_tps": 870,
+            "speedup": 2.16,
+            "ttft_ms": 40.1,
+            "itl_ms": 17.6
           },
           "qa": {
             "acceptance_length": 2.95,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 780,
-            "acceptance_at_pos": [
-              0.82,
-              0.54,
-              0.36,
-              0.23
-            ]
+            "acceptance_at_pos": [0.82, 0.54, 0.36, 0.23],
+            "throughput_tps": 790,
+            "speedup": 1.96,
+            "ttft_ms": 39.7,
+            "itl_ms": 18.4
           }
         }
       },
-      "error": null
+      "error": null,
+      "deploy": {
+        "command": "vllm serve meta-llama/Llama-3.1-8B-Instruct --speculative-model RedHatAI/Llama-3.1-8B-Instruct_speculators_peagle_2l",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
     },
     {
       "model": "RedHatAI/Llama-3.1-8B-Instruct_speculators_mtp",
@@ -290,45 +302,47 @@
       "num_speculative_tokens": 4,
       "hf_last_modified": "2025-07-08T09:00:00Z",
       "evaluated_at": "2025-07-14T15:30:00Z",
-      "gpus": "1xa100",
+      "gpus": "1xh100",
       "status": "ok",
       "metrics": {
         "acceptance_length": 2.95,
-        "acceptance_at_pos": [
-          0.82,
-          0.54,
-          0.35,
-          0.24
-        ],
+        "acceptance_at_pos": [0.82, 0.54, 0.35, 0.24],
         "num_drafts": 800,
+        "throughput_tps": 805,
+        "speedup": 1.99,
+        "ttft_ms": 43.2,
+        "itl_ms": 19.5,
         "subsets": {
           "HumanEval": {
             "acceptance_length": 2.89,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 756,
-            "acceptance_at_pos": [
-              0.8,
-              0.52,
-              0.34,
-              0.23
-            ]
+            "acceptance_at_pos": [0.80, 0.52, 0.34, 0.23],
+            "throughput_tps": 840,
+            "speedup": 2.09,
+            "ttft_ms": 42.8,
+            "itl_ms": 18.4
           },
           "qa": {
             "acceptance_length": 3.01,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 804,
-            "acceptance_at_pos": [
-              0.84,
-              0.56,
-              0.36,
-              0.25
-            ]
+            "acceptance_at_pos": [0.84, 0.56, 0.36, 0.25],
+            "throughput_tps": 775,
+            "speedup": 1.92,
+            "ttft_ms": 44.2,
+            "itl_ms": 20.1
           }
         }
       },
-      "error": null
+      "error": null,
+      "deploy": {
+        "command": "vllm serve meta-llama/Llama-3.1-8B-Instruct --speculative-config '{\"method\": \"mtp\"}'",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
     },
     {
       "model": "RedHatAI/Llama-3.3-70B-Instruct_speculators_eagle3_2l",
@@ -341,41 +355,43 @@
       "status": "ok",
       "metrics": {
         "acceptance_length": 3.05,
-        "acceptance_at_pos": [
-          0.86,
-          0.56,
-          0.37,
-          0.26
-        ],
+        "acceptance_at_pos": [0.86, 0.56, 0.37, 0.26],
         "num_drafts": 800,
+        "throughput_tps": 312,
+        "speedup": 2.34,
+        "ttft_ms": 156.2,
+        "itl_ms": 32.4,
         "subsets": {
           "HumanEval": {
             "acceptance_length": 2.97,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 788,
-            "acceptance_at_pos": [
-              0.84,
-              0.54,
-              0.35,
-              0.24
-            ]
+            "acceptance_at_pos": [0.84, 0.54, 0.35, 0.24],
+            "throughput_tps": 340,
+            "speedup": 2.55,
+            "ttft_ms": 154.1,
+            "itl_ms": 30.2
           },
           "qa": {
             "acceptance_length": 3.13,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 852,
-            "acceptance_at_pos": [
-              0.88,
-              0.58,
-              0.39,
-              0.28
-            ]
+            "acceptance_at_pos": [0.88, 0.58, 0.39, 0.28],
+            "throughput_tps": 295,
+            "speedup": 2.21,
+            "ttft_ms": 158.7,
+            "itl_ms": 34.1
           }
         }
       },
-      "error": null
+      "error": null,
+      "deploy": {
+        "command": "vllm serve meta-llama/Llama-3.3-70B-Instruct --speculative-model RedHatAI/Llama-3.3-70B-Instruct_speculators_eagle3_2l -tp 4",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
     },
     {
       "model": "RedHatAI/Llama-3.3-70B-Instruct_speculators_dflash_2l",
@@ -388,41 +404,43 @@
       "status": "ok",
       "metrics": {
         "acceptance_length": 2.78,
-        "acceptance_at_pos": [
-          0.78,
-          0.48,
-          0.31,
-          0.21
-        ],
+        "acceptance_at_pos": [0.78, 0.48, 0.31, 0.21],
         "num_drafts": 800,
+        "throughput_tps": 278,
+        "speedup": 2.08,
+        "ttft_ms": 148.5,
+        "itl_ms": 35.1,
         "subsets": {
           "HumanEval": {
             "acceptance_length": 2.72,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 688,
-            "acceptance_at_pos": [
-              0.76,
-              0.46,
-              0.3,
-              0.2
-            ]
+            "acceptance_at_pos": [0.76, 0.46, 0.30, 0.20],
+            "throughput_tps": 302,
+            "speedup": 2.26,
+            "ttft_ms": 147.0,
+            "itl_ms": 33.5
           },
           "qa": {
             "acceptance_length": 2.84,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 736,
-            "acceptance_at_pos": [
-              0.8,
-              0.5,
-              0.32,
-              0.22
-            ]
+            "acceptance_at_pos": [0.80, 0.50, 0.32, 0.22],
+            "throughput_tps": 261,
+            "speedup": 1.95,
+            "ttft_ms": 150.4,
+            "itl_ms": 36.8
           }
         }
       },
-      "error": null
+      "error": null,
+      "deploy": {
+        "command": "vllm serve meta-llama/Llama-3.3-70B-Instruct --speculative-model RedHatAI/Llama-3.3-70B-Instruct_speculators_dflash_2l -tp 4",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
     },
     {
       "model": "RedHatAI/Mistral-7B-Instruct-v0.3_speculators_eagle3_2l",
@@ -435,41 +453,43 @@
       "status": "ok",
       "metrics": {
         "acceptance_length": 2.63,
-        "acceptance_at_pos": [
-          0.74,
-          0.44,
-          0.27,
-          0.18
-        ],
+        "acceptance_at_pos": [0.74, 0.44, 0.27, 0.18],
         "num_drafts": 800,
+        "throughput_tps": 856,
+        "speedup": 2.13,
+        "ttft_ms": 41.2,
+        "itl_ms": 18.1,
         "subsets": {
           "HumanEval": {
             "acceptance_length": 2.57,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 628,
-            "acceptance_at_pos": [
-              0.72,
-              0.42,
-              0.25,
-              0.18
-            ]
+            "acceptance_at_pos": [0.72, 0.42, 0.25, 0.18],
+            "throughput_tps": 898,
+            "speedup": 2.23,
+            "ttft_ms": 40.8,
+            "itl_ms": 17.0
           },
           "qa": {
             "acceptance_length": 2.69,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 676,
-            "acceptance_at_pos": [
-              0.76,
-              0.46,
-              0.29,
-              0.18
-            ]
+            "acceptance_at_pos": [0.76, 0.46, 0.29, 0.18],
+            "throughput_tps": 825,
+            "speedup": 2.05,
+            "ttft_ms": 42.0,
+            "itl_ms": 18.9
           }
         }
       },
-      "error": null
+      "error": null,
+      "deploy": {
+        "command": "vllm serve mistralai/Mistral-7B-Instruct-v0.3 --speculative-model RedHatAI/Mistral-7B-Instruct-v0.3_speculators_eagle3_2l",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
     },
     {
       "model": "RedHatAI/Mistral-7B-Instruct-v0.3_speculators_peagle_2l",
@@ -481,7 +501,8 @@
       "gpus": "1xa100",
       "status": "failed",
       "metrics": null,
-      "error": "CUDA out of memory: tried to allocate 2.4 GiB"
+      "error": "CUDA out of memory: tried to allocate 2.4 GiB",
+      "deploy": null
     },
     {
       "model": "RedHatAI/Mistral-7B-Instruct-v0.3_speculators_mtp",
@@ -494,38 +515,43 @@
       "status": "ok",
       "metrics": {
         "acceptance_length": 2.45,
-        "acceptance_at_pos": [
-          0.72,
-          0.45,
-          0.28
-        ],
+        "acceptance_at_pos": [0.72, 0.45, 0.28],
         "num_drafts": 800,
+        "throughput_tps": 745,
+        "speedup": 1.85,
+        "ttft_ms": 45.1,
+        "itl_ms": 20.8,
         "subsets": {
           "HumanEval": {
             "acceptance_length": 2.39,
             "num_drafts": 400,
             "num_draft_tokens": 1200,
             "num_accepted_tokens": 556,
-            "acceptance_at_pos": [
-              0.7,
-              0.43,
-              0.26
-            ]
+            "acceptance_at_pos": [0.70, 0.43, 0.26],
+            "throughput_tps": 778,
+            "speedup": 1.93,
+            "ttft_ms": 44.5,
+            "itl_ms": 19.7
           },
           "qa": {
             "acceptance_length": 2.51,
             "num_drafts": 400,
             "num_draft_tokens": 1200,
             "num_accepted_tokens": 604,
-            "acceptance_at_pos": [
-              0.74,
-              0.47,
-              0.3
-            ]
+            "acceptance_at_pos": [0.74, 0.47, 0.30],
+            "throughput_tps": 718,
+            "speedup": 1.78,
+            "ttft_ms": 46.2,
+            "itl_ms": 21.5
           }
         }
       },
-      "error": null
+      "error": null,
+      "deploy": {
+        "command": "vllm serve mistralai/Mistral-7B-Instruct-v0.3 --speculative-config '{\"method\": \"mtp\"}'",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
     },
     {
       "model": "RedHatAI/Qwen3-32B_speculators_eagle3_2l",
@@ -538,41 +564,43 @@
       "status": "ok",
       "metrics": {
         "acceptance_length": 3.28,
-        "acceptance_at_pos": [
-          0.9,
-          0.6,
-          0.44,
-          0.34
-        ],
+        "acceptance_at_pos": [0.90, 0.60, 0.44, 0.34],
         "num_drafts": 800,
+        "throughput_tps": 478,
+        "speedup": 2.38,
+        "ttft_ms": 98.4,
+        "itl_ms": 24.6,
         "subsets": {
           "HumanEval": {
-            "acceptance_length": 3.2,
+            "acceptance_length": 3.20,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 880,
-            "acceptance_at_pos": [
-              0.88,
-              0.58,
-              0.42,
-              0.32
-            ]
+            "acceptance_at_pos": [0.88, 0.58, 0.42, 0.32],
+            "throughput_tps": 510,
+            "speedup": 2.54,
+            "ttft_ms": 97.2,
+            "itl_ms": 23.1
           },
           "qa": {
             "acceptance_length": 3.36,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 944,
-            "acceptance_at_pos": [
-              0.92,
-              0.62,
-              0.46,
-              0.36
-            ]
+            "acceptance_at_pos": [0.92, 0.62, 0.46, 0.36],
+            "throughput_tps": 452,
+            "speedup": 2.25,
+            "ttft_ms": 99.8,
+            "itl_ms": 25.8
           }
         }
       },
-      "error": null
+      "error": null,
+      "deploy": {
+        "command": "vllm serve Qwen/Qwen3-32B --speculative-model RedHatAI/Qwen3-32B_speculators_eagle3_2l -tp 4",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
     },
     {
       "model": "RedHatAI/Qwen3-32B_speculators_peagle_2l",
@@ -585,41 +613,43 @@
       "status": "ok",
       "metrics": {
         "acceptance_length": 3.01,
-        "acceptance_at_pos": [
-          0.84,
-          0.55,
-          0.36,
-          0.26
-        ],
+        "acceptance_at_pos": [0.84, 0.55, 0.36, 0.26],
         "num_drafts": 800,
+        "throughput_tps": 445,
+        "speedup": 2.21,
+        "ttft_ms": 102.1,
+        "itl_ms": 26.3,
         "subsets": {
           "HumanEval": {
             "acceptance_length": 2.95,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 780,
-            "acceptance_at_pos": [
-              0.82,
-              0.53,
-              0.35,
-              0.25
-            ]
+            "acceptance_at_pos": [0.82, 0.53, 0.35, 0.25],
+            "throughput_tps": 472,
+            "speedup": 2.35,
+            "ttft_ms": 101.0,
+            "itl_ms": 25.1
           },
           "qa": {
             "acceptance_length": 3.07,
             "num_drafts": 400,
             "num_draft_tokens": 1600,
             "num_accepted_tokens": 828,
-            "acceptance_at_pos": [
-              0.86,
-              0.57,
-              0.37,
-              0.27
-            ]
+            "acceptance_at_pos": [0.86, 0.57, 0.37, 0.27],
+            "throughput_tps": 425,
+            "speedup": 2.11,
+            "ttft_ms": 103.5,
+            "itl_ms": 27.2
           }
         }
       },
-      "error": null
+      "error": null,
+      "deploy": {
+        "command": "vllm serve Qwen/Qwen3-32B --speculative-model RedHatAI/Qwen3-32B_speculators_peagle_2l -tp 4",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
     }
   ]
 }
