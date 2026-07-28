@@ -17,7 +17,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from normalize import upsert_result
+from normalize import upsert_baseline, upsert_result
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
@@ -142,6 +142,65 @@ def evaluate_model(entry: dict):
         teardown_pod()
 
 
+def run_baseline_in_pod(target: str, gpus: int):
+    with open(SCRIPT_DIR / "in_pod_baseline.sh") as f:
+        run_cmd(
+            [
+                "oc", "exec", "-i", pod_name(), "-n", NAMESPACE, "--",
+                "bash", "-s", "--", target, str(gpus),
+            ],
+            stdin=f,
+            timeout=EVAL_TIMEOUT,
+        )
+
+
+def copy_baseline_out(slug: str) -> Path:
+    outdir = REPO_ROOT / "results" / slug / "baseline"
+    if outdir.exists():
+        shutil.rmtree(outdir)
+    run_cmd([
+        "oc", "cp",
+        f"{NAMESPACE}/{pod_name()}:/tmp/baseline-out",
+        str(outdir),
+    ])
+    return outdir
+
+
+def parse_baseline_throughput(baseline_dir: Path) -> float:
+    """Extract peak throughput from guidellm's baseline output."""
+    baseline_json = baseline_dir / "baseline.json"
+    if not baseline_json.exists():
+        raise FileNotFoundError(f"no baseline.json in {baseline_dir}")
+    data = json.loads(baseline_json.read_text())
+    benchmarks = data.get("benchmarks", [])
+    if not benchmarks:
+        raise ValueError("no benchmarks in baseline.json")
+    tps = max(b.get("output_tokens_per_second", 0) for b in benchmarks)
+    if tps <= 0:
+        raise ValueError("baseline throughput is zero")
+    return tps
+
+
+def evaluate_baseline(target: str, gpus: int, gpu_type: str):
+    slug = target.replace("/", "--") + f"__{gpus}x{gpu_type}"
+    gpus_str = f"{gpus}x{gpu_type}"
+
+    print(f"\n=== Baseline: {target} on {gpus_str} (pod {pod_name()}) ===")
+
+    _register_teardown_signals()
+    try:
+        provision_pod(gpus, gpu_type)
+        run_baseline_in_pod(target, gpus)
+        baseline_dir = copy_baseline_out(slug)
+        tps = parse_baseline_throughput(baseline_dir)
+        upsert_baseline(target, gpus_str, tps)
+        print(f"=== Baseline done: {target} @ {gpus_str} = {tps:.2f} tok/s ===")
+    except Exception as e:
+        print(f"ERROR baseline {target}: {e}")
+    finally:
+        teardown_pod()
+
+
 def cleanup_stale_pod():
     pod = pod_name()
     try:
@@ -168,7 +227,7 @@ def cleanup_stale_pod():
         pass
 
 
-def main():
+def refresh():
     lock_path = REPO_ROOT / "logs" / "refresh.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_fd = open(lock_path, "w")
@@ -193,6 +252,25 @@ def main():
         entry_path.unlink(missing_ok=True)
 
     print(f"=== refresh finished {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')} ===")
+
+
+def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    sub = ap.add_subparsers(dest="cmd")
+
+    sub.add_parser("refresh", help="Discover + eval pending models (default)")
+
+    bp = sub.add_parser("baseline", help="Run autoregressive baseline for a target model")
+    bp.add_argument("--target", required=True, help="Target model HF ID")
+    bp.add_argument("--gpus", type=int, required=True)
+    bp.add_argument("--gpu-type", required=True)
+
+    args = ap.parse_args()
+    if args.cmd == "baseline":
+        evaluate_baseline(args.target, args.gpus, args.gpu_type)
+    else:
+        refresh()
 
 
 if __name__ == "__main__":
