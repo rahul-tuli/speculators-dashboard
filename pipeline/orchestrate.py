@@ -266,8 +266,16 @@ def main():
     bp.add_argument("--gpus", type=int, required=True)
     bp.add_argument("--gpu-type", required=True)
 
+    sp = sub.add_parser("single", help="Eval a single model from a pending entry JSON")
+    sp.add_argument("--entry", required=True, type=Path,
+                     help="Path to pending entry JSON (same schema as discover.py output)")
+
     args = ap.parse_args()
-    if args.cmd == "baseline":
+    if args.cmd == "single":
+        cleanup_stale_pod()
+        entry = json.loads(args.entry.read_text())
+        evaluate_model(entry)
+    elif args.cmd == "baseline":
         evaluate_baseline(args.target, args.gpus, args.gpu_type)
     else:
         refresh()
