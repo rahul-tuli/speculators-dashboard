@@ -1,0 +1,118 @@
+name: Poll HuggingFace Collection
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  poll-and-file:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Ensure labels exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "eval:pending"  --color 0E8A16 --description "Model awaiting evaluation"  --force
+          gh label create "eval:running"  --color 1D76DB --description "Evaluation in progress"     --force
+          gh label create "eval:done"     --color 6F42C1 --description "Evaluation complete"        --force
+          gh label create "eval:failed"   --color D93F0B --description "Evaluation failed"          --force
+          gh label create "needs-triage"  --color FBCA04 --description "Needs manual GPU sizing"    --force
+
+      - name: Discover pending models
+        run: python pipeline/discover.py
+
+      - name: File eval issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          INDEX="results/pending/index.json"
+          if [ ! -f "$INDEX" ]; then
+            echo "No index.json found — nothing to do."
+            exit 0
+          fi
+
+          COUNT=$(jq 'length' "$INDEX")
+          if [ "$COUNT" -eq 0 ]; then
+            echo "No pending models — nothing to do."
+            exit 0
+          fi
+
+          echo "Found $COUNT pending model(s)"
+
+          for SLUG in $(jq -r '.[]' "$INDEX"); do
+            FILE="results/pending/${SLUG}.json"
+            if [ ! -f "$FILE" ]; then
+              echo "WARN: missing file for slug $SLUG, skipping"
+              continue
+            fi
+
+            MODEL=$(jq -r '.model' "$FILE")
+            TARGET=$(jq -r '.target // "unknown"' "$FILE")
+            ALGORITHM=$(jq -r '.algorithm // "unknown"' "$FILE")
+            TOKENS=$(jq -r '.num_speculative_tokens // "unknown"' "$FILE")
+            GPUS=$(jq -r '.gpus // 1' "$FILE")
+            GPU_TYPE=$(jq -r '.gpu_type // "a100"' "$FILE")
+            HF_MODIFIED=$(jq -r '.hf_last_modified // "unknown"' "$FILE")
+            SIZING_NOTE=$(jq -r '.sizing_note // ""' "$FILE")
+
+            TITLE="Eval: ${MODEL}"
+
+            # Idempotency: skip if an open issue with this exact title already exists.
+            # Search by title text, then filter client-side for exact match.
+            EXACT=$(gh issue list \
+              --state open \
+              --search "\"Eval: ${MODEL}\" in:title" \
+              --json title \
+              --jq "[.[] | select(.title == \"Eval: ${MODEL}\")] | length" 2>/dev/null || echo "0")
+            if [ "$EXACT" != "0" ]; then
+              echo "SKIP (issue exists): ${MODEL}"
+              continue
+            fi
+
+            LABELS="eval:pending"
+            if echo "$SIZING_NOTE" | grep -qi "unknown"; then
+              LABELS="eval:pending,needs-triage"
+            fi
+
+            BODY=$(cat <<EOF
+          ## Eval Request
+
+          | Field | Value |
+          |-------|-------|
+          | Model | \`${MODEL}\` |
+          | Target | \`${TARGET}\` |
+          | Algorithm | \`${ALGORITHM}\` |
+          | Speculative Tokens | \`${TOKENS}\` |
+          | GPUs | \`${GPUS}x${GPU_TYPE}\` |
+          | HF Last Modified | \`${HF_MODIFIED}\` |
+
+          Filed automatically by the HF polling workflow.
+          EOF
+          )
+
+            gh issue create \
+              --title "$TITLE" \
+              --label "$LABELS" \
+              --body "$BODY"
+
+            echo "CREATED issue: ${MODEL}"
+          done
+
+      - name: Clean up pending directory
+        if: always()
+        run: rm -rf results/pending
