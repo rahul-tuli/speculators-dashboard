@@ -1,11 +1,14 @@
 {
-  "updated_at": "2026-08-06T16:32:18Z",
+  "updated_at": "2026-08-06T17:32:10Z",
   "baselines": {
     "Qwen/Qwen3-8B": {
       "1xh100": 3254.24
     },
     "meta-llama/Llama-3.1-8B-Instruct": {
       "1xh100": 1503.48
+    },
+    "openai/gpt-oss-20b": {
+      "1xh100": 1313.81
     }
   },
   "models": [
@@ -563,6 +566,192 @@
       "error": null,
       "deploy": {
         "command": "vllm serve Qwen/Qwen3-8B -tp 1 --speculative-config '{\"model\":\"RedHatAI/Qwen3-8B-speculator.eagle3\",\"num_speculative_tokens\":5,\"method\":\"eagle3\"}'",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    },
+    {
+      "model": "RedHatAI/gpt-oss-20b-speculator.eagle3",
+      "target": "openai/gpt-oss-20b",
+      "algorithm": "eagle3",
+      "num_speculative_tokens": 5,
+      "hf_last_modified": "2026-04-08T12:35:43.000Z",
+      "evaluated_at": "2026-08-06T17:32:10Z",
+      "gpus": "1xh100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.1906,
+        "acceptance_at_pos": [
+          0.5242,
+          0.2948,
+          0.1782,
+          0.1154,
+          0.078
+        ],
+        "num_drafts": 1943023,
+        "throughput_tps": 3103.7,
+        "speedup": 2.3624,
+        "ttft_ms": 51.1,
+        "itl_ms": 5.46,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.501,
+            "acceptance_at_pos": [
+              0.5837,
+              0.3685,
+              0.2461,
+              0.1746,
+              0.1281
+            ],
+            "num_drafts": 236137,
+            "num_draft_tokens": 1180685,
+            "num_accepted_tokens": 354436,
+            "throughput_tps": 3604.84,
+            "ttft_ms": 52.62,
+            "itl_ms": 4.96,
+            "speedup": 2.7438
+          },
+          "math_reasoning": {
+            "acceptance_length": 2.8021,
+            "acceptance_at_pos": [
+              0.6379,
+              0.4407,
+              0.317,
+              0.232,
+              0.1746
+            ],
+            "num_drafts": 93408,
+            "num_draft_tokens": 467040,
+            "num_accepted_tokens": 168329,
+            "throughput_tps": 3730.82,
+            "ttft_ms": 48.32,
+            "itl_ms": 4.18,
+            "speedup": 2.8397
+          },
+          "qa": {
+            "acceptance_length": 1.9604,
+            "acceptance_at_pos": [
+              0.4751,
+              0.2371,
+              0.1284,
+              0.0747,
+              0.0452
+            ],
+            "num_drafts": 538093,
+            "num_draft_tokens": 2690465,
+            "num_accepted_tokens": 516780,
+            "throughput_tps": 2736.05,
+            "ttft_ms": 50.17,
+            "itl_ms": 6.16,
+            "speedup": 2.0825
+          },
+          "question": {
+            "acceptance_length": 2.1884,
+            "acceptance_at_pos": [
+              0.5243,
+              0.2933,
+              0.1771,
+              0.115,
+              0.0787
+            ],
+            "num_drafts": 268623,
+            "num_draft_tokens": 1343115,
+            "num_accepted_tokens": 319228,
+            "throughput_tps": 3024.38,
+            "ttft_ms": 51.77,
+            "itl_ms": 5.42,
+            "speedup": 2.302
+          },
+          "rag": {
+            "acceptance_length": 2.1029,
+            "acceptance_at_pos": [
+              0.5058,
+              0.2748,
+              0.1604,
+              0.0995,
+              0.0623
+            ],
+            "num_drafts": 232359,
+            "num_draft_tokens": 1161795,
+            "num_accepted_tokens": 256262,
+            "throughput_tps": 2980.35,
+            "ttft_ms": 51.17,
+            "itl_ms": 5.83,
+            "speedup": 2.2685
+          },
+          "summarization": {
+            "acceptance_length": 2.149,
+            "acceptance_at_pos": [
+              0.537,
+              0.2936,
+              0.1643,
+              0.0964,
+              0.0575
+            ],
+            "num_drafts": 138724,
+            "num_draft_tokens": 693620,
+            "num_accepted_tokens": 159388,
+            "throughput_tps": 3471.02,
+            "ttft_ms": 56.1,
+            "itl_ms": 6.03,
+            "speedup": 2.6419
+          },
+          "tool_call": {
+            "acceptance_length": 2.1474,
+            "acceptance_at_pos": [
+              0.5007,
+              0.2868,
+              0.1746,
+              0.1104,
+              0.0749
+            ],
+            "num_drafts": 69637,
+            "num_draft_tokens": 348185,
+            "num_accepted_tokens": 79901,
+            "throughput_tps": 2730.88,
+            "ttft_ms": 52.8,
+            "itl_ms": 5.75,
+            "speedup": 2.0786
+          },
+          "translation": {
+            "acceptance_length": 2.4436,
+            "acceptance_at_pos": [
+              0.5848,
+              0.3624,
+              0.229,
+              0.1562,
+              0.1112
+            ],
+            "num_drafts": 95394,
+            "num_draft_tokens": 476970,
+            "num_accepted_tokens": 137712,
+            "throughput_tps": 2981.58,
+            "ttft_ms": 49.97,
+            "itl_ms": 4.68,
+            "speedup": 2.2694
+          },
+          "writing": {
+            "acceptance_length": 2.1872,
+            "acceptance_at_pos": [
+              0.5243,
+              0.2922,
+              0.1765,
+              0.1153,
+              0.0789
+            ],
+            "num_drafts": 270648,
+            "num_draft_tokens": 1353240,
+            "num_accepted_tokens": 321318,
+            "throughput_tps": 2953.71,
+            "ttft_ms": 49.27,
+            "itl_ms": 5.26,
+            "speedup": 2.2482
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve openai/gpt-oss-20b -tp 1 --speculative-config '{\"model\":\"RedHatAI/gpt-oss-20b-speculator.eagle3\",\"num_speculative_tokens\":5,\"method\":\"eagle3\"}'",
         "recipe_source": "",
         "recipe_model": ""
       }
