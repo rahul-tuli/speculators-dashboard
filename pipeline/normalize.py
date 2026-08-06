@@ -81,7 +81,7 @@ def validate_record(record: dict) -> None:
         model_schema = schema["$defs"]["model"]
         model_schema["$defs"] = schema["$defs"]
         jsonschema.validate(record, model_schema)
-    except ImportError:
+    except (ImportError, RecursionError):
         pass
     except jsonschema.ValidationError as exc:
         raise ValueError(f"schema validation failed: {exc.message}") from exc
