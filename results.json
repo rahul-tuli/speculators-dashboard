@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-06T17:32:10Z",
+  "updated_at": "2026-08-06T17:40:46Z",
   "baselines": {
     "Qwen/Qwen3-8B": {
       "1xh100": 3254.24
@@ -754,6 +754,23 @@
         "command": "vllm serve openai/gpt-oss-20b -tp 1 --speculative-config '{\"model\":\"RedHatAI/gpt-oss-20b-speculator.eagle3\",\"num_speculative_tokens\":5,\"method\":\"eagle3\"}'",
         "recipe_source": "",
         "recipe_model": ""
+      }
+    },
+    {
+      "model": "poolside/Laguna-XS.2-speculator.dflash",
+      "target": "poolside/Laguna-XS.2",
+      "algorithm": "dflash",
+      "num_speculative_tokens": 5,
+      "hf_last_modified": "2026-05-19T09:28:04.000Z",
+      "evaluated_at": "2026-08-06T17:40:46Z",
+      "gpus": "1xh100",
+      "status": "failed",
+      "metrics": null,
+      "error": "vLLM MoE topk_sigmoid incompatibility: _moe_C::topk_sigmoid() missing is_padding argument. Laguna-XS.2 uses MoE architecture that is not compatible with the installed vLLM v0.26.0 C++ extensions.",
+      "deploy": {
+        "command": "VLLM_USE_DEEP_GEMM=0 vllm serve poolside/Laguna-XS.2 --tensor-parallel-size 1 --max-model-len 16384 --speculative-config '{\"model\":\"poolside/Laguna-XS.2-speculator.dflash\",\"num_speculative_tokens\":5,\"method\":\"dflash\"}'",
+        "recipe_source": "https://huggingface.co/poolside/Laguna-XS.2-speculator.dflash",
+        "recipe_model": "poolside/Laguna-XS.2-speculator.dflash"
       }
     }
   ]
