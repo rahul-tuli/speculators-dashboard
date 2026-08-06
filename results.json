@@ -1,11 +1,200 @@
 {
-  "updated_at": "2026-08-06T15:56:37Z",
+  "updated_at": "2026-08-06T16:32:18Z",
   "baselines": {
     "Qwen/Qwen3-8B": {
       "1xh100": 3254.24
+    },
+    "meta-llama/Llama-3.1-8B-Instruct": {
+      "1xh100": 1503.48
     }
   },
   "models": [
+    {
+      "model": "RedHatAI/Llama-3.1-8B-Instruct-speculator.eagle3",
+      "target": "meta-llama/Llama-3.1-8B-Instruct",
+      "algorithm": "eagle3",
+      "num_speculative_tokens": 5,
+      "hf_last_modified": "2026-04-08T12:25:55.000Z",
+      "evaluated_at": "2026-08-06T16:32:18Z",
+      "gpus": "1xh100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 3.0322,
+        "acceptance_at_pos": [
+          0.7233,
+          0.5225,
+          0.3649,
+          0.2508,
+          0.1706
+        ],
+        "num_drafts": 475021,
+        "throughput_tps": 4074.73,
+        "speedup": 2.7102,
+        "ttft_ms": 31.86,
+        "itl_ms": 3.38,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 3.5799,
+            "acceptance_at_pos": [
+              0.8069,
+              0.6459,
+              0.4929,
+              0.3648,
+              0.2694
+            ],
+            "num_drafts": 79573,
+            "num_draft_tokens": 397865,
+            "num_accepted_tokens": 205293,
+            "throughput_tps": 5634.34,
+            "ttft_ms": 30.24,
+            "itl_ms": 2.88,
+            "speedup": 3.7475
+          },
+          "math_reasoning": {
+            "acceptance_length": 3.2375,
+            "acceptance_at_pos": [
+              0.7806,
+              0.5765,
+              0.4111,
+              0.282,
+              0.1874
+            ],
+            "num_drafts": 40185,
+            "num_draft_tokens": 200925,
+            "num_accepted_tokens": 89914,
+            "throughput_tps": 3662.11,
+            "ttft_ms": 31.37,
+            "itl_ms": 3.09,
+            "speedup": 2.4358
+          },
+          "qa": {
+            "acceptance_length": 2.4226,
+            "acceptance_at_pos": [
+              0.605,
+              0.3794,
+              0.2321,
+              0.1326,
+              0.0736
+            ],
+            "num_drafts": 16204,
+            "num_draft_tokens": 81020,
+            "num_accepted_tokens": 23052,
+            "throughput_tps": 2886.21,
+            "ttft_ms": 31.53,
+            "itl_ms": 4.32,
+            "speedup": 1.9197
+          },
+          "question": {
+            "acceptance_length": 2.9388,
+            "acceptance_at_pos": [
+              0.7157,
+              0.5061,
+              0.3411,
+              0.2267,
+              0.1492
+            ],
+            "num_drafts": 93239,
+            "num_draft_tokens": 466195,
+            "num_accepted_tokens": 180774,
+            "throughput_tps": 3714.14,
+            "ttft_ms": 31.62,
+            "itl_ms": 3.41,
+            "speedup": 2.4704
+          },
+          "rag": {
+            "acceptance_length": 3.1108,
+            "acceptance_at_pos": [
+              0.7309,
+              0.5348,
+              0.3844,
+              0.2744,
+              0.1863
+            ],
+            "num_drafts": 12231,
+            "num_draft_tokens": 61155,
+            "num_accepted_tokens": 25817,
+            "throughput_tps": 2360.35,
+            "ttft_ms": 32.95,
+            "itl_ms": 3.26,
+            "speedup": 1.5699
+          },
+          "summarization": {
+            "acceptance_length": 2.9113,
+            "acceptance_at_pos": [
+              0.7046,
+              0.4877,
+              0.3362,
+              0.23,
+              0.1527
+            ],
+            "num_drafts": 72810,
+            "num_draft_tokens": 364050,
+            "num_accepted_tokens": 139159,
+            "throughput_tps": 4186.85,
+            "ttft_ms": 35.55,
+            "itl_ms": 4.0,
+            "speedup": 2.7848
+          },
+          "tool_call": {
+            "acceptance_length": 3.0042,
+            "acceptance_at_pos": [
+              0.7117,
+              0.5163,
+              0.3575,
+              0.2482,
+              0.1704
+            ],
+            "num_drafts": 49888,
+            "num_draft_tokens": 249440,
+            "num_accepted_tokens": 99986,
+            "throughput_tps": 3351.4,
+            "ttft_ms": 33.18,
+            "itl_ms": 3.47,
+            "speedup": 2.2291
+          },
+          "translation": {
+            "acceptance_length": 2.1079,
+            "acceptance_at_pos": [
+              0.5135,
+              0.2981,
+              0.1588,
+              0.0886,
+              0.049
+            ],
+            "num_drafts": 17537,
+            "num_draft_tokens": 87685,
+            "num_accepted_tokens": 19430,
+            "throughput_tps": 2239.7,
+            "ttft_ms": 31.01,
+            "itl_ms": 4.74,
+            "speedup": 1.4897
+          },
+          "writing": {
+            "acceptance_length": 2.9485,
+            "acceptance_at_pos": [
+              0.7149,
+              0.5065,
+              0.345,
+              0.2297,
+              0.1524
+            ],
+            "num_drafts": 93354,
+            "num_draft_tokens": 466770,
+            "num_accepted_tokens": 181896,
+            "throughput_tps": 3778.66,
+            "ttft_ms": 30.6,
+            "itl_ms": 3.29,
+            "speedup": 2.5133
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve meta-llama/Llama-3.1-8B-Instruct -tp 1 --speculative-config '{\"model\":\"RedHatAI/Llama-3.1-8B-Instruct-speculator.eagle3\",\"num_speculative_tokens\":5,\"method\":\"eagle3\"}'",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    },
     {
       "model": "RedHatAI/Qwen3-8B-speculator.dflash",
       "target": "Qwen/Qwen3-8B",
