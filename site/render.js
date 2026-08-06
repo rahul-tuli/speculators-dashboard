@@ -2,7 +2,7 @@
 
 /* ============================================================
    Speculators Dashboard — render.js
-   DOM construction and rendering helpers (Variant A design).
+   DOM construction and rendering helpers.
    ============================================================ */
 
 var Render = {};
