@@ -16,9 +16,9 @@ var CHART_DEFAULTS = {
   backgroundColor: "transparent",
   textStyle: { fontFamily: "Inter, -apple-system, sans-serif" },
   tooltip: {
-    backgroundColor: "#1c2128",
-    borderColor: "#30363d",
-    textStyle: { color: "#e6edf3", fontSize: 12 },
+    backgroundColor: "#0f172a",
+    borderColor: "rgba(255,255,255,0.1)",
+    textStyle: { color: "#f8fafc", fontSize: 12 },
   },
 };
 
@@ -116,20 +116,20 @@ Charts.algoCompare = function (containerId, models, algoColors, algoOrder, hasTh
 
   var option = mergeDefaults({
     grid: { left: 10, right: 10, top: 30, bottom: 40, containLabel: true },
-    legend: { data: presentAlgos, bottom: 0, textStyle: { color: "#8b949e" } },
+    legend: { data: presentAlgos, bottom: 0, textStyle: { color: "#e2e8f0", fontFamily: "Inter", fontSize: 11 } },
     xAxis: {
       type: "category",
       data: targets,
-      axisLabel: { color: "#e6edf3", fontSize: 12, rotate: targets.length > 5 ? 20 : 0 },
-      axisLine: { lineStyle: { color: "#30363d" } },
+      axisLabel: { color: "#cbd5e1", fontFamily: "Inter", fontSize: 10, rotate: targets.length > 4 ? 15 : 0 },
+      axisLine: { lineStyle: { color: "rgba(255,255,255,0.1)" } },
       axisTick: { show: false },
     },
     yAxis: {
       type: "value",
       name: yAxisName,
-      nameTextStyle: { color: "#8b949e" },
-      splitLine: { lineStyle: { color: "#21262d" } },
-      axisLabel: { color: "#8b949e" },
+      nameTextStyle: { color: "#cbd5e1", fontSize: 10, fontFamily: "Inter" },
+      splitLine: { lineStyle: { color: "rgba(255,255,255,0.06)" } },
+      axisLabel: { color: "#cbd5e1", fontFamily: "JetBrains Mono", fontSize: 10 },
     },
     tooltip: {
       trigger: "axis",
@@ -148,7 +148,7 @@ Charts.algoCompare = function (containerId, models, algoColors, algoOrder, hasTh
         label: {
           show: true,
           position: "top",
-          color: "#e6edf3",
+          color: "#f8fafc",
           fontSize: 10,
           formatter: function (p) {
             if (!p.value) return "";

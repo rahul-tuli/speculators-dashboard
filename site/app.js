@@ -2,7 +2,7 @@
 
 /* ============================================================
    Speculators Dashboard — app.js
-   State management and orchestration (Variant A design).
+   State management and orchestration.
    ============================================================ */
 
 // ── Constants ─────────────────────────────────────────────────
@@ -11,10 +11,10 @@ var RESULTS_URL = "./results.json";
 var SAMPLE_URL = "./sample-results.json";
 
 var ALGO_COLORS = {
-  eagle3: { bg: "rgba(16,185,129,0.15)", text: "#10b981", chart: "#10b981" },
-  dflash: { bg: "rgba(245,158,11,0.15)", text: "#f59e0b", chart: "#f59e0b" },
-  peagle: { bg: "rgba(139,92,246,0.15)", text: "#8b5cf6", chart: "#8b5cf6" },
-  mtp:    { bg: "rgba(6,182,212,0.15)",  text: "#06b6d4", chart: "#06b6d4" },
+  eagle3: { bg: "rgba(59,130,246,0.15)", text: "#60a5fa", chart: "#3b82f6" },
+  dflash: { bg: "rgba(217,119,6,0.15)", text: "#fbbf24", chart: "#d97706" },
+  peagle: { bg: "rgba(168,85,247,0.15)", text: "#c084fc", chart: "#a855f7" },
+  mtp:    { bg: "rgba(5,150,105,0.15)",  text: "#34d399", chart: "#059669" },
 };
 var ALGO_ORDER = ["eagle3", "dflash", "peagle", "mtp"];
 
