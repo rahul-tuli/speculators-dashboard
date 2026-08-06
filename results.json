@@ -1,5 +1,176 @@
 {
-  "updated_at": "2026-07-29T00:00:00Z",
-  "baselines": {},
-  "models": []
+  "updated_at": "2026-08-06T11:21:17Z",
+  "baselines": {
+    "Qwen/Qwen3-8B": {
+      "1xh100": 3254.24
+    }
+  },
+  "models": [
+    {
+      "model": "RedHatAI/Qwen3-8B-speculator.eagle3",
+      "target": "Qwen/Qwen3-8B",
+      "algorithm": "eagle3",
+      "num_speculative_tokens": 3,
+      "hf_last_modified": "2026-04-08T12:31:11.000Z",
+      "evaluated_at": "2026-08-06T11:21:16Z",
+      "gpus": "1xh100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.2987,
+        "acceptance_at_pos": [
+          0.6613,
+          0.411,
+          0.2263
+        ],
+        "num_drafts": 3801414,
+        "throughput_tps": 3954.02,
+        "speedup": 1.215,
+        "ttft_ms": 38.53,
+        "itl_ms": 4.78,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.3759,
+            "acceptance_at_pos": [
+              0.6808,
+              0.4436,
+              0.2515
+            ],
+            "num_drafts": 921107,
+            "num_draft_tokens": 2763321,
+            "num_accepted_tokens": 1267376,
+            "throughput_tps": 3549.67,
+            "ttft_ms": 32.33,
+            "itl_ms": 4.71,
+            "speedup": 1.0908
+          },
+          "math_reasoning": {
+            "acceptance_length": 2.4701,
+            "acceptance_at_pos": [
+              0.7093,
+              0.4741,
+              0.2867
+            ],
+            "num_drafts": 520051,
+            "num_draft_tokens": 1560153,
+            "num_accepted_tokens": 764532,
+            "throughput_tps": 4844.1,
+            "ttft_ms": 32.04,
+            "itl_ms": 4.29,
+            "speedup": 1.4886
+          },
+          "qa": {
+            "acceptance_length": 2.2073,
+            "acceptance_at_pos": [
+              0.6355,
+              0.3767,
+              0.195
+            ],
+            "num_drafts": 437234,
+            "num_draft_tokens": 1311702,
+            "num_accepted_tokens": 527869,
+            "throughput_tps": 3831.18,
+            "ttft_ms": 30.44,
+            "itl_ms": 4.61,
+            "speedup": 1.1773
+          },
+          "question": {
+            "acceptance_length": 2.2648,
+            "acceptance_at_pos": [
+              0.6518,
+              0.3973,
+              0.2156
+            ],
+            "num_drafts": 518743,
+            "num_draft_tokens": 1556229,
+            "num_accepted_tokens": 656087,
+            "throughput_tps": 3845.05,
+            "ttft_ms": 30.18,
+            "itl_ms": 4.42,
+            "speedup": 1.1816
+          },
+          "rag": {
+            "acceptance_length": 2.2512,
+            "acceptance_at_pos": [
+              0.6497,
+              0.392,
+              0.2095
+            ],
+            "num_drafts": 272684,
+            "num_draft_tokens": 818052,
+            "num_accepted_tokens": 341169,
+            "throughput_tps": 3961.92,
+            "ttft_ms": 33.6,
+            "itl_ms": 4.75,
+            "speedup": 1.2175
+          },
+          "summarization": {
+            "acceptance_length": 2.1337,
+            "acceptance_at_pos": [
+              0.6133,
+              0.3458,
+              0.1746
+            ],
+            "num_drafts": 218851,
+            "num_draft_tokens": 656553,
+            "num_accepted_tokens": 248121,
+            "throughput_tps": 3807.26,
+            "ttft_ms": 34.64,
+            "itl_ms": 5.02,
+            "speedup": 1.1699
+          },
+          "tool_call": {
+            "acceptance_length": 2.2162,
+            "acceptance_at_pos": [
+              0.6465,
+              0.38,
+              0.1898
+            ],
+            "num_drafts": 143688,
+            "num_draft_tokens": 431064,
+            "num_accepted_tokens": 174756,
+            "throughput_tps": 4166.69,
+            "ttft_ms": 34.45,
+            "itl_ms": 4.83,
+            "speedup": 1.2804
+          },
+          "translation": {
+            "acceptance_length": 2.1992,
+            "acceptance_at_pos": [
+              0.6365,
+              0.3714,
+              0.1913
+            ],
+            "num_drafts": 254160,
+            "num_draft_tokens": 762480,
+            "num_accepted_tokens": 304777,
+            "throughput_tps": 4433.95,
+            "ttft_ms": 29.68,
+            "itl_ms": 4.37,
+            "speedup": 1.3625
+          },
+          "writing": {
+            "acceptance_length": 2.2665,
+            "acceptance_at_pos": [
+              0.6525,
+              0.398,
+              0.216
+            ],
+            "num_drafts": 514896,
+            "num_draft_tokens": 1544688,
+            "num_accepted_tokens": 652109,
+            "throughput_tps": 3675.83,
+            "ttft_ms": 82.4,
+            "itl_ms": 6.13,
+            "speedup": 1.1296
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve RedHatAI/Qwen3-8B-speculator.eagle3",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    }
+  ]
 }
