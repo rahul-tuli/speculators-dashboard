@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-06T17:40:46Z",
+  "updated_at": "2026-08-06T17:45:30Z",
   "baselines": {
     "Qwen/Qwen3-8B": {
       "1xh100": 3254.24
@@ -9,6 +9,9 @@
     },
     "openai/gpt-oss-20b": {
       "1xh100": 1313.81
+    },
+    "Qwen/Qwen3-14B": {
+      "1xh100": 1793.19
     }
   },
   "models": [
