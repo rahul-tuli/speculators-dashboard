@@ -24,6 +24,7 @@ from pathlib import Path
 
 COLLECTION_URL = "https://huggingface.co/api/collections/RedHatAI/speculator-models"
 CONFIG_URL = "https://huggingface.co/{model}/raw/main/config.json"
+MODEL_API_URL = "https://huggingface.co/api/models/{model}"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RESULTS_JSON = REPO_ROOT / "results.json"
@@ -80,6 +81,34 @@ def slugify(model_id: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name).strip("-")
 
 
+def fetch_hf_metadata(model_id: str) -> dict:
+    """Pull params/architecture/base_model from the HF model API.
+
+    Returns a dict with any of: params (int, from safetensors total),
+    architecture (str, first entry of config.architectures), base_model
+    (str, from card data). Fields that are unavailable are omitted; an
+    empty dict means the API call itself failed.
+    """
+    try:
+        info = fetch_json(MODEL_API_URL.format(model=model_id))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
+        print(f"  WARN: cannot fetch HF metadata for {model_id}: {e}", file=sys.stderr)
+        return {}
+    meta = {}
+    total = (info.get("safetensors") or {}).get("total")
+    if isinstance(total, int) and total > 0:
+        meta["params"] = total
+    architectures = (info.get("config") or {}).get("architectures") or []
+    if architectures:
+        meta["architecture"] = architectures[0]
+    base_model = (info.get("cardData") or {}).get("base_model")
+    if isinstance(base_model, list):
+        base_model = base_model[0] if base_model else None
+    if base_model:
+        meta["base_model"] = base_model
+    return meta
+
+
 def extract_metadata(model_id: str) -> dict | None:
     """Fetch config.json and pull speculator metadata. None if not a speculator."""
     try:
@@ -100,6 +129,7 @@ def extract_metadata(model_id: str) -> dict | None:
         "algorithm": sc.get("algorithm", cfg["speculators_model_type"]),
         "target": verifier.get("name_or_path"),
         "num_speculative_tokens": greedy.get("speculative_tokens"),
+        **fetch_hf_metadata(model_id),
     }
 
 
@@ -152,6 +182,9 @@ def main() -> None:
         }
         if note:
             entry["sizing_note"] = note
+        for key in ("params", "architecture", "base_model"):
+            if key in meta:
+                entry[key] = meta[key]
         (PENDING_DIR / f"{slug}.json").write_text(json.dumps(entry, indent=2) + "\n")
         pending.append(slug)
         print(f"  PENDING: {model_id} -> {gpus}x{gpu_type} target={meta['target']}")

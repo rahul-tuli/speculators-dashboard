@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-06T17:45:30Z",
+  "updated_at": "2026-08-25T14:25:22Z",
   "baselines": {
     "Qwen/Qwen3-8B": {
       "1xh100": 3254.24
@@ -199,7 +199,10 @@
         "command": "vllm serve meta-llama/Llama-3.1-8B-Instruct -tp 1 --speculative-config '{\"model\":\"RedHatAI/Llama-3.1-8B-Instruct-speculator.eagle3\",\"num_speculative_tokens\":5,\"method\":\"eagle3\"}'",
         "recipe_source": "",
         "recipe_model": ""
-      }
+      },
+      "params": 950186496,
+      "architecture": "Eagle3Speculator",
+      "base_model": "meta-llama/Llama-3.1-8B-Instruct"
     },
     {
       "model": "RedHatAI/Qwen3-8B-speculator.dflash",
@@ -385,7 +388,10 @@
         "command": "vllm serve Qwen/Qwen3-8B --tensor-parallel-size 1 --max-model-len 16384 --speculative-config '{\"model\":\"RedHatAI/Qwen3-8B-speculator.dflash\",\"num_speculative_tokens\":5,\"method\":\"dflash\"}'",
         "recipe_source": "",
         "recipe_model": ""
-      }
+      },
+      "params": 1802212224,
+      "architecture": "DFlashDraftModel",
+      "base_model": "qwen3/qwen3-8b"
     },
     {
       "model": "RedHatAI/Qwen3-8B-speculator.eagle3",
@@ -571,7 +577,9 @@
         "command": "vllm serve Qwen/Qwen3-8B -tp 1 --speculative-config '{\"model\":\"RedHatAI/Qwen3-8B-speculator.eagle3\",\"num_speculative_tokens\":5,\"method\":\"eagle3\"}'",
         "recipe_source": "",
         "recipe_model": ""
-      }
+      },
+      "params": 1022037632,
+      "architecture": "Eagle3Speculator"
     },
     {
       "model": "RedHatAI/gpt-oss-20b-speculator.eagle3",
@@ -757,7 +765,9 @@
         "command": "vllm serve openai/gpt-oss-20b -tp 1 --speculative-config '{\"model\":\"RedHatAI/gpt-oss-20b-speculator.eagle3\",\"num_speculative_tokens\":5,\"method\":\"eagle3\"}'",
         "recipe_source": "",
         "recipe_model": ""
-      }
+      },
+      "params": 854792768,
+      "architecture": "Eagle3DraftModel"
     },
     {
       "model": "poolside/Laguna-XS.2-speculator.dflash",
@@ -774,7 +784,10 @@
         "command": "VLLM_USE_DEEP_GEMM=0 vllm serve poolside/Laguna-XS.2 --tensor-parallel-size 1 --max-model-len 16384 --speculative-config '{\"model\":\"poolside/Laguna-XS.2-speculator.dflash\",\"num_speculative_tokens\":5,\"method\":\"dflash\"}'",
         "recipe_source": "https://huggingface.co/poolside/Laguna-XS.2-speculator.dflash",
         "recipe_model": "poolside/Laguna-XS.2-speculator.dflash"
-      }
+      },
+      "params": 606759424,
+      "architecture": "DFlashDraftModel",
+      "base_model": "poolside/Laguna-XS.2"
     }
   ]
 }

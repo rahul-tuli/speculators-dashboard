@@ -317,6 +317,9 @@ def upsert_result(
             "recipe_model": deploy_recipe_model or "",
         },
     }
+    for key in ("params", "architecture", "base_model"):
+        if entry.get(key) is not None:
+            record[key] = entry[key]
 
     if status == "ok":
         if not raw_dir:

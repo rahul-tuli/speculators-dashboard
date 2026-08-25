@@ -52,6 +52,19 @@
         "hf_last_modified": { "type": "string", "format": "date-time" },
         "evaluated_at": { "type": "string", "format": "date-time" },
         "gpus": { "type": "string" },
+        "params": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Drafter parameter count from HF safetensors metadata; optional for records captured before metadata enrichment"
+        },
+        "architecture": {
+          "type": "string",
+          "description": "Drafter architecture from HF config (e.g. Eagle3Speculator); optional for records captured before metadata enrichment"
+        },
+        "base_model": {
+          "type": "string",
+          "description": "Base model the drafter was trained from, per HF card data; optional, not always published"
+        },
         "status": { "type": "string", "enum": ["ok", "failed"] },
         "metrics": {
           "oneOf": [
