@@ -48,6 +48,7 @@ pipeline/
   normalize.py          eval output -> results.json entry (idempotent upsert)
   in_pod_eval.sh        runs inside the pod: vllm serve + evaluate.py
   cron_eval.sh          cron entrypoint: picks up eval:pending GitHub issues
+  speculators-eval.{service,timer}  systemd user units that schedule cron_eval.sh
 site/                   static dashboard (no build step, vanilla JS)
 prototype/              marketing-grade design prototypes
 schema/                 results.json schema
@@ -80,6 +81,42 @@ dashboard; a model is re-evaluated when its HF `lastModified` changes.
   `site/sample-results.json` is the offline fallback dataset.
 - **Results changes** ship via `make deploy` (commits `results.json` +
   `results/` and pushes).
+
+## Automation
+
+On the cluster-connected machine, `pipeline/cron_eval.sh` runs unattended via a
+systemd **user** timer (no root needed): every 30 minutes it picks up
+`eval:pending` GitHub issues and evaluates them one at a time.
+
+```bash
+# repo at ~/projects/speculators-dashboard (CHEATSHEET.md's location)
+mkdir -p ~/.config/systemd/user ~/.config/speculators-dashboard
+cp pipeline/speculators-eval.{service,timer} ~/.config/systemd/user/
+# if the repo lives elsewhere, edit WorkingDirectory in the .service first
+
+# optional: env for the job (gh token, PATH additions) — literal paths only
+cat > ~/.config/speculators-dashboard/env <<'EOF'
+GH_TOKEN=ghp_...
+EOF
+
+systemctl --user daemon-reload
+systemctl --user enable --now speculators-eval.timer
+loginctl enable-linger "$USER"   # keep running with no open session; survives reboots
+```
+
+Verify and watch:
+
+```bash
+systemctl --user list-timers speculators-eval.timer
+journalctl --user -u speculators-eval.service -f
+tail -f logs/cron.log            # wrapper log; per-eval logs are logs/eval-<slug>.log
+```
+
+Edge cases are handled by construction: no pending issues → the script logs
+`Found 0 pending issue(s)` and exits; overlapping ticks → systemd never starts a
+second instance of the oneshot service while one is active; reboot → `enable` +
+linger + `Persistent=true` (catches up a missed run). Note `oc login` sessions
+expire — if evals start failing with auth errors, re-login on the machine.
 
 ## Deployment
 

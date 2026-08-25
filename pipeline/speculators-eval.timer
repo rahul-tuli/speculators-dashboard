@@ -1,0 +1,15 @@
+# systemd user timer: run the speculators eval cron every 30 minutes.
+# Install: see README.md "Automation" section.
+[Unit]
+Description=Run the speculators eval cron every 30 minutes
+
+[Timer]
+# First run 5 min after boot/login, then every 30 min after the last run
+# finished. Persistent=true catches up a run missed while the machine was
+# off or the user manager was down.
+OnBootSec=5min
+OnUnitActiveSec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

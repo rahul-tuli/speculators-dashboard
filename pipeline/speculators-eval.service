@@ -1,0 +1,19 @@
+# systemd user service for the speculators eval cron.
+# Install: see README.md "Automation" section.
+#
+# Concurrency: Type=oneshot + systemd's refusal to start a second instance
+# while one is active means overlapping timer ticks are silently skipped —
+# no flock needed (evals run 15-45 min each, ticks fire every 30 min).
+[Unit]
+Description=Speculators dashboard: pick up eval:pending issues and run evals
+
+[Service]
+Type=oneshot
+# Adjust if the repo is not checked out at ~/projects/speculators-dashboard
+# (CHEATSHEET.md's recommended location).
+WorkingDirectory=%h/projects/speculators-dashboard
+# Optional env (GH_TOKEN, PATH additions, ...); '-' = ignore if missing.
+EnvironmentFile=-%h/.config/speculators-dashboard/env
+# bash -l so the login profile (PATH with gh/oc) applies; append the wrapper
+# output to a persistent log alongside the per-eval logs cron_eval.sh writes.
+ExecStart=/bin/bash -lc 'exec ./pipeline/cron_eval.sh >> logs/cron.log 2>&1'

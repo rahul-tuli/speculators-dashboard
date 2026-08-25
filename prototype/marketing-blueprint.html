@@ -373,11 +373,13 @@ a:hover { text-decoration: underline; }
   52%       { transform: translate(236px, 0);    opacity: 1; }
   56%, 100% { transform: translate(236px, 0);    opacity: 1; }
 }
-/* Chips 1,2,4 accepted → blue-green; chip 3 rejected → red, drop & fade */
-.chip-1 rect, .chip-2 rect, .chip-4 rect { animation-name: chip-ok-rect; }
-.chip-1 text, .chip-2 text, .chip-4 text { animation-name: chip-ok-text; }
-.chip-1, .chip-2, .chip-4 { animation-name: chip-fly; }
-.chip-3 { animation-name: chip-fly-reject; }
+/* Chips 1,2 accepted → blue-green; chip 3 rejected → red, drop & fade.
+   Chip 4 is also rejected: verification is prefix-sequential, so every
+   token beyond the first rejection is discarded. */
+.chip-1 rect, .chip-2 rect { animation-name: chip-ok-rect; }
+.chip-1 text, .chip-2 text { animation-name: chip-ok-text; }
+.chip-1, .chip-2 { animation-name: chip-fly; }
+.chip-3, .chip-4 { animation-name: chip-fly-reject; }
 
 @keyframes chip-ok-rect {
   0%, 51%   { fill: rgba(48,162,255,0.14); stroke: var(--blue); }
@@ -396,8 +398,8 @@ a:hover { text-decoration: underline; }
   74%       { transform: translate(236px, 26px); opacity: 0.85; }
   88%, 100% { transform: translate(236px, 26px); opacity: 0; }
 }
-.chip-3 rect { animation-name: chip-rej-rect; }
-.chip-3 text { animation-name: chip-rej-text; }
+.chip-3 rect, .chip-4 rect { animation-name: chip-rej-rect; }
+.chip-3 text, .chip-4 text { animation-name: chip-rej-text; }
 @keyframes chip-rej-rect {
   0%, 51%   { fill: rgba(48,162,255,0.14); stroke: var(--blue); }
   56%, 100% { fill: rgba(239,68,68,0.12); stroke: var(--red); }
@@ -982,8 +984,9 @@ tr.deploy-row > td {
 
           <!-- Speculative decoding diagram:
                drafter proposes γ tokens → target verifies in parallel →
-               accepted tokens commit (green), rejected drop (red) -->
-          <svg class="spec-diagram" viewBox="0 0 640 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of speculative decoding: a drafter model proposes tokens, the target model verifies them, accepted tokens are kept and rejected ones discarded.">
+               accepted tokens commit (green); the first rejected token and
+               every token after it are discarded (red) -->
+          <svg class="spec-diagram" viewBox="0 0 640 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of speculative decoding: a drafter model proposes tokens, the target model verifies them, accepted tokens are kept, and the first rejected token plus all tokens after it are discarded.">
             <!-- edges -->
             <path class="dia-edge" d="M 176 96 H 244" />
             <path class="dia-edge dia-edge--accept" d="M 560 96 H 600" />
