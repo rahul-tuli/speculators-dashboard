@@ -4,6 +4,8 @@ results/pending/
 results/*/raw/
 __pycache__/
 .DS_Store
-docs/
+docs/*
+!docs/agents/
 CLAUDE.md
+!CLAUDE.md
 local/
