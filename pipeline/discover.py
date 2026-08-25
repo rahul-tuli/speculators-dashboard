@@ -108,7 +108,11 @@ def main() -> None:
     items = [it for it in collection.get("items", []) if it.get("type") == "model"]
     print(f"Collection has {len(items)} models")
 
-    results = json.loads(RESULTS_JSON.read_text()) if RESULTS_JSON.exists() else {"models": []}
+    results = (
+        json.loads(RESULTS_JSON.read_text())
+        if RESULTS_JSON.exists()
+        else {"models": []}
+    )
     done = {
         (m["model"], m.get("hf_last_modified"))
         for m in results.get("models", [])

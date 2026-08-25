@@ -14,7 +14,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -22,18 +22,38 @@ RESULTS_JSON = REPO_ROOT / "results.json"
 SCHEMA_JSON = REPO_ROOT / "schema" / "results.json"
 
 REQUIRED_RECORD_KEYS = {
-    "model", "target", "algorithm", "num_speculative_tokens",
-    "hf_last_modified", "evaluated_at", "gpus", "status", "metrics", "error",
+    "model",
+    "target",
+    "algorithm",
+    "num_speculative_tokens",
+    "hf_last_modified",
+    "evaluated_at",
+    "gpus",
+    "status",
+    "metrics",
+    "error",
     "deploy",
 }
 REQUIRED_METRICS_KEYS = {
-    "acceptance_length", "acceptance_at_pos", "num_drafts",
-    "throughput_tps", "speedup", "ttft_ms", "itl_ms", "subsets",
+    "acceptance_length",
+    "acceptance_at_pos",
+    "num_drafts",
+    "throughput_tps",
+    "speedup",
+    "ttft_ms",
+    "itl_ms",
+    "subsets",
 }
 REQUIRED_SUBSET_KEYS = {
-    "acceptance_length", "acceptance_at_pos", "num_drafts",
-    "num_draft_tokens", "num_accepted_tokens",
-    "throughput_tps", "speedup", "ttft_ms", "itl_ms",
+    "acceptance_length",
+    "acceptance_at_pos",
+    "num_drafts",
+    "num_draft_tokens",
+    "num_accepted_tokens",
+    "throughput_tps",
+    "speedup",
+    "ttft_ms",
+    "itl_ms",
 }
 
 
@@ -77,6 +97,7 @@ def validate_record(record: dict) -> None:
 
     try:
         import jsonschema
+
         schema = json.loads(SCHEMA_JSON.read_text())
         model_schema = schema["$defs"]["model"]
         model_schema["$defs"] = schema["$defs"]
@@ -182,7 +203,9 @@ def build_metrics(raw_dir: Path, target: str, gpus: str, baselines: dict) -> dic
         sub["throughput_tps"] = perf.get("throughput_tps", 0.0)
         sub["ttft_ms"] = perf.get("ttft_ms", 0.0)
         sub["itl_ms"] = perf.get("itl_ms", 0.0)
-        sub["speedup"] = round(sub["throughput_tps"] / baseline_tps, 4) if baseline_tps else 0.0
+        sub["speedup"] = (
+            round(sub["throughput_tps"] / baseline_tps, 4) if baseline_tps else 0.0
+        )
 
         tokens = sub["num_accepted_tokens"]
         total_tokens += tokens
@@ -219,7 +242,7 @@ def _load_results() -> dict:
 
 
 def _save_results(results: dict) -> None:
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     results["updated_at"] = now
     RESULTS_JSON.write_text(json.dumps(results, indent=2) + "\n")
 
@@ -234,16 +257,22 @@ def upsert_baseline(target: str, gpus: str, throughput_tps: float) -> None:
     print(f"results.json: baseline {target} @ {gpus} = {throughput_tps:.2f} tok/s")
 
 
-def upsert_result(entry_path, status, raw_dir=None, error=None,
-                  deploy_command=None, deploy_recipe_source=None,
-                  deploy_recipe_model=None):
+def upsert_result(
+    entry_path,
+    status,
+    raw_dir=None,
+    error=None,
+    deploy_command=None,
+    deploy_recipe_source=None,
+    deploy_recipe_model=None,
+):
     """Normalize one eval run into results.json (idempotent upsert)."""
     entry_path = Path(entry_path)
     if raw_dir is not None:
         raw_dir = Path(raw_dir)
 
     entry = json.loads(entry_path.read_text())
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     gpus_str = f"{entry['gpus']}x{entry['gpu_type']}"
     record = {
@@ -269,7 +298,10 @@ def upsert_result(entry_path, status, raw_dir=None, error=None,
             raise ValueError("raw_dir is required when status is 'ok'")
         results = _load_results()
         record["metrics"] = build_metrics(
-            raw_dir, entry.get("target", ""), gpus_str, results.get("baselines", {}),
+            raw_dir,
+            entry.get("target", ""),
+            gpus_str,
+            results.get("baselines", {}),
         )
 
     validate_record(record)
@@ -288,7 +320,9 @@ def main() -> None:
     sub = ap.add_subparsers(dest="cmd")
 
     eval_p = sub.add_parser("eval", help="Upsert a drafter eval result")
-    eval_p.add_argument("--entry", required=True, help="pending entry JSON from discover.py")
+    eval_p.add_argument(
+        "--entry", required=True, help="pending entry JSON from discover.py"
+    )
     eval_p.add_argument("--status", choices=["ok", "failed"], required=True)
     eval_p.add_argument("--raw-dir", type=Path, default=None)
     eval_p.add_argument("--error", default=None)
@@ -319,7 +353,10 @@ def main() -> None:
         upsert_baseline(args.target, args.gpus, args.throughput)
     else:
         upsert_result(
-            args.entry, args.status, raw_dir=args.raw_dir, error=args.error,
+            args.entry,
+            args.status,
+            raw_dir=args.raw_dir,
+            error=args.error,
             deploy_command=args.deploy_command,
             deploy_recipe_source=args.deploy_recipe_source,
             deploy_recipe_model=args.deploy_recipe_model,

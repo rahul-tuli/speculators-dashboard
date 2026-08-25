@@ -14,7 +14,7 @@ import shutil
 import signal
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from deploy_agent import lookup_deploy
@@ -72,25 +72,46 @@ def provision_pod(gpus: int, gpu_type: str):
     subprocess.run(
         [
             str(DEVENV_DIR / "launch.sh"),
-            "--name", "eval",
-            "--gpus", str(gpus),
-            "--gpu-type", gpu_type,
+            "--name",
+            "eval",
+            "--gpus",
+            str(gpus),
+            "--gpu-type",
+            gpu_type,
             "--cluster",
         ],
         stdin=subprocess.DEVNULL,
     )
-    run_cmd([
-        "oc", "wait", "--for=condition=Ready",
-        f"pod/{pod_name()}", "-n", NAMESPACE, "--timeout=1800s",
-    ])
+    run_cmd(
+        [
+            "oc",
+            "wait",
+            "--for=condition=Ready",
+            f"pod/{pod_name()}",
+            "-n",
+            NAMESPACE,
+            "--timeout=1800s",
+        ]
+    )
 
 
 def run_eval_in_pod(model: str, gpus: int, algorithm: str):
     with open(SCRIPT_DIR / "in_pod_eval.sh") as f:
         run_cmd(
             [
-                "oc", "exec", "-i", pod_name(), "-n", NAMESPACE, "--",
-                "bash", "-s", "--", model, str(gpus), algorithm,
+                "oc",
+                "exec",
+                "-i",
+                pod_name(),
+                "-n",
+                NAMESPACE,
+                "--",
+                "bash",
+                "-s",
+                "--",
+                model,
+                str(gpus),
+                algorithm,
             ],
             stdin=f,
             timeout=EVAL_TIMEOUT,
@@ -101,11 +122,14 @@ def copy_results_out(slug: str) -> Path:
     outdir = REPO_ROOT / "results" / slug / "raw"
     if outdir.exists():
         shutil.rmtree(outdir)
-    run_cmd([
-        "oc", "cp",
-        f"{NAMESPACE}/{pod_name()}:/tmp/eval-out",
-        str(outdir),
-    ])
+    run_cmd(
+        [
+            "oc",
+            "cp",
+            f"{NAMESPACE}/{pod_name()}:/tmp/eval-out",
+            str(outdir),
+        ]
+    )
     return outdir
 
 
@@ -127,17 +151,26 @@ def evaluate_model(entry: dict):
         raw_dir = copy_results_out(slug)
 
         deploy = lookup_deploy(model, entry.get("target", ""), algorithm, gpus)
-        upsert_result(entry_path, "ok", raw_dir=raw_dir,
-                      deploy_command=deploy["command"],
-                      deploy_recipe_source=deploy["recipe_source"],
-                      deploy_recipe_model=deploy["recipe_model"])
+        upsert_result(
+            entry_path,
+            "ok",
+            raw_dir=raw_dir,
+            deploy_command=deploy["command"],
+            deploy_recipe_source=deploy["recipe_source"],
+            deploy_recipe_model=deploy["recipe_model"],
+        )
         print(f"=== Done: {model} ===")
     except Exception as e:
         print(f"ERROR: {e}")
         try:
-            upsert_result(entry_path, "failed", error=str(e),
-                          deploy_command="", deploy_recipe_source="",
-                          deploy_recipe_model="")
+            upsert_result(
+                entry_path,
+                "failed",
+                error=str(e),
+                deploy_command="",
+                deploy_recipe_source="",
+                deploy_recipe_model="",
+            )
         except Exception:
             print(f"ERROR: normalize.py also failed for {model}")
     finally:
@@ -148,8 +181,18 @@ def run_baseline_in_pod(target: str, gpus: int):
     with open(SCRIPT_DIR / "in_pod_baseline.sh") as f:
         run_cmd(
             [
-                "oc", "exec", "-i", pod_name(), "-n", NAMESPACE, "--",
-                "bash", "-s", "--", target, str(gpus),
+                "oc",
+                "exec",
+                "-i",
+                pod_name(),
+                "-n",
+                NAMESPACE,
+                "--",
+                "bash",
+                "-s",
+                "--",
+                target,
+                str(gpus),
             ],
             stdin=f,
             timeout=EVAL_TIMEOUT,
@@ -160,11 +203,14 @@ def copy_baseline_out(slug: str) -> Path:
     outdir = REPO_ROOT / "results" / slug / "baseline"
     if outdir.exists():
         shutil.rmtree(outdir)
-    run_cmd([
-        "oc", "cp",
-        f"{NAMESPACE}/{pod_name()}:/tmp/baseline-out",
-        str(outdir),
-    ])
+    run_cmd(
+        [
+            "oc",
+            "cp",
+            f"{NAMESPACE}/{pod_name()}:/tmp/baseline-out",
+            str(outdir),
+        ]
+    )
     return outdir
 
 
@@ -208,18 +254,22 @@ def cleanup_stale_pod():
     try:
         result = subprocess.run(
             [
-                "oc", "get", "pod", pod, "-n", NAMESPACE,
-                "-o", "jsonpath={.metadata.creationTimestamp}",
+                "oc",
+                "get",
+                "pod",
+                pod,
+                "-n",
+                NAMESPACE,
+                "-o",
+                "jsonpath={.metadata.creationTimestamp}",
             ],
             capture_output=True,
             text=True,
         )
         if result.returncode != 0 or not result.stdout.strip():
             return
-        created = datetime.fromisoformat(
-            result.stdout.strip().replace("Z", "+00:00")
-        )
-        age = (datetime.now(timezone.utc) - created).total_seconds()
+        created = datetime.fromisoformat(result.stdout.strip().replace("Z", "+00:00"))
+        age = (datetime.now(UTC) - created).total_seconds()
         if age > 14400:
             print(f"Deleting stale eval pod {pod} (age {int(age)}s)")
             subprocess.run(
@@ -239,7 +289,7 @@ def refresh():
         print("another refresh is already running")
         return
 
-    print(f"=== refresh started {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')} ===")
+    print(f"=== refresh started {datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')} ===")
 
     cleanup_stale_pod()
 
@@ -253,24 +303,33 @@ def refresh():
         evaluate_model(entry)
         entry_path.unlink(missing_ok=True)
 
-    print(f"=== refresh finished {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')} ===")
+    print(
+        f"=== refresh finished {datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')} ==="
+    )
 
 
 def main():
     import argparse
+
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd")
 
     sub.add_parser("refresh", help="Discover + eval pending models (default)")
 
-    bp = sub.add_parser("baseline", help="Run autoregressive baseline for a target model")
+    bp = sub.add_parser(
+        "baseline", help="Run autoregressive baseline for a target model"
+    )
     bp.add_argument("--target", required=True, help="Target model HF ID")
     bp.add_argument("--gpus", type=int, required=True)
     bp.add_argument("--gpu-type", required=True)
 
     sp = sub.add_parser("single", help="Eval a single model from a pending entry JSON")
-    sp.add_argument("--entry", required=True, type=Path,
-                     help="Path to pending entry JSON (same schema as discover.py output)")
+    sp.add_argument(
+        "--entry",
+        required=True,
+        type=Path,
+        help="Path to pending entry JSON (same schema as discover.py output)",
+    )
 
     args = ap.parse_args()
     if args.cmd == "single":

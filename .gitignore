@@ -1,8 +1,10 @@
 .venv/
+*.egg-info/
 logs/
 results/pending/
 results/*/raw/
 __pycache__/
+site/results.json
 .DS_Store
 docs/*
 !docs/agents/

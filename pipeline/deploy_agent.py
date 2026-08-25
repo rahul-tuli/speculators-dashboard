@@ -37,7 +37,9 @@ _AUTO_DETECT_ALGORITHMS = frozenset({"eagle3", "dflash", "peagle", "dspark"})
 def _fetch_json(url: str) -> dict | list | None:
     """Fetch JSON from a URL, returning None on any failure."""
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "speculators-dashboard"})
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "speculators-dashboard"}
+        )
         with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
             return json.loads(resp.read())
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
