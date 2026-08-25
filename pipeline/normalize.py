@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -156,12 +157,22 @@ def parse_acceptance(raw_dir: Path) -> dict:
     return top_level, subsets
 
 
-def parse_perf(raw_dir: Path) -> dict[str, dict]:
+def _num(value: str | None) -> float | None:
+    """Parse a CSV number; empty or non-finite values (e.g. inf rate) become None."""
+    if not value:
+        return None
+    v = float(value)
+    return round(v, 2) if math.isfinite(v) else None
+
+
+def parse_perf(raw_dir: Path) -> tuple[dict[str, dict], dict[str, list[dict]]]:
     """Parse sweep mode's perf_results.csv into per-subset throughput/latency data.
 
-    Returns {subset_name: {throughput_tps, ttft_ms, itl_ms}}.
-    Multiple rows per subset (different rate points) are aggregated by taking
-    the row with the highest output_tps_median (peak throughput).
+    Returns (best, sweeps):
+    - best: {subset_name: {throughput_tps, ttft_ms, itl_ms}}, taking the row
+      with the highest output_tps_median (peak throughput).
+    - sweeps: {subset_name: [rate points sorted by target_rate]}, preserving
+      all rows for latency-vs-throughput curves.
     """
     csvs = sorted(raw_dir.rglob("perf_results.csv"))
     if not csvs:
@@ -171,22 +182,35 @@ def parse_perf(raw_dir: Path) -> dict[str, dict]:
         raise ValueError(f"{csvs[0]} is empty")
 
     best: dict[str, dict] = {}
+    sweeps: dict[str, list[dict]] = {}
     for row in rows:
         subset = row["subset"]
         tps = float(row.get("output_tps_median") or 0)
+        sweeps.setdefault(subset, []).append(
+            {
+                "target_rate": _num(row.get("target_rate")),
+                "rps_median": _num(row.get("rps_median")),
+                "latency_median_s": _num(row.get("latency_median_s")),
+                "ttft_median_ms": _num(row.get("ttft_median_ms")),
+                "itl_median_ms": _num(row.get("itl_median_ms")),
+                "output_tps_median": _num(row.get("output_tps_median")),
+            }
+        )
         if subset not in best or tps > best[subset]["throughput_tps"]:
             best[subset] = {
                 "throughput_tps": round(tps, 2),
                 "ttft_ms": round(float(row.get("ttft_median_ms") or 0), 2),
                 "itl_ms": round(float(row.get("itl_median_ms") or 0), 2),
             }
-    return best
+    for points in sweeps.values():
+        points.sort(key=lambda p: (p["target_rate"] is None, p["target_rate"] or 0))
+    return best, sweeps
 
 
 def build_metrics(raw_dir: Path, target: str, gpus: str, baselines: dict) -> dict:
     """Combine acceptance + perf data into the full metrics object."""
     top_acceptance, subsets = parse_acceptance(raw_dir)
-    perf_by_subset = parse_perf(raw_dir)
+    perf_by_subset, sweeps_by_subset = parse_perf(raw_dir)
 
     baseline_tps = None
     target_baselines = baselines.get(target)
@@ -203,6 +227,7 @@ def build_metrics(raw_dir: Path, target: str, gpus: str, baselines: dict) -> dic
         sub["throughput_tps"] = perf.get("throughput_tps", 0.0)
         sub["ttft_ms"] = perf.get("ttft_ms", 0.0)
         sub["itl_ms"] = perf.get("itl_ms", 0.0)
+        sub["sweep"] = sweeps_by_subset.get(name, [])
         sub["speedup"] = (
             round(sub["throughput_tps"] / baseline_tps, 4) if baseline_tps else 0.0
         )

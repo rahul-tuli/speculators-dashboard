@@ -137,7 +137,33 @@
         "throughput_tps": { "type": "number" },
         "speedup": { "type": "number" },
         "ttft_ms": { "type": "number" },
-        "itl_ms": { "type": "number" }
+        "itl_ms": { "type": "number" },
+        "sweep": {
+          "type": "array",
+          "description": "All sweep rate points (latency-vs-throughput curve); optional for backwards compatibility with results captured before sweep preservation",
+          "items": { "$ref": "#/$defs/sweep_point" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "sweep_point": {
+      "type": "object",
+      "description": "One rate point from a perf sweep; numeric fields are null when missing or non-finite (e.g. infinite target rate)",
+      "required": [
+        "target_rate",
+        "rps_median",
+        "latency_median_s",
+        "ttft_median_ms",
+        "itl_median_ms",
+        "output_tps_median"
+      ],
+      "properties": {
+        "target_rate": { "oneOf": [{ "type": "number" }, { "type": "null" }] },
+        "rps_median": { "oneOf": [{ "type": "number" }, { "type": "null" }] },
+        "latency_median_s": { "oneOf": [{ "type": "number" }, { "type": "null" }] },
+        "ttft_median_ms": { "oneOf": [{ "type": "number" }, { "type": "null" }] },
+        "itl_median_ms": { "oneOf": [{ "type": "number" }, { "type": "null" }] },
+        "output_tps_median": { "oneOf": [{ "type": "number" }, { "type": "null" }] }
       },
       "additionalProperties": false
     }
