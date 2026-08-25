@@ -1,0 +1,3280 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE — throwaway design exploration for issue #95, not production -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Speculators — Speculative Decoding Evals for vLLM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+/* ============================================================
+   Design Tokens — vLLM Dark (Horizon)
+   ============================================================ */
+:root {
+  --bg:            #020617;
+  --surface:       #0f172a;
+  --muted-surface: #1e293b;
+  --text-1:        #f8fafc;
+  --text-2:        #94a3b8;
+  --text-3:        #64748b;
+  --border:        rgba(255,255,255,0.1);
+  --border-input:  rgba(255,255,255,0.15);
+  --blue:          #30a2ff;
+  --blue-soft:     rgba(48,162,255,0.12);
+  --yellow:        #fdb517;
+  --yellow-hover:  #e5a315;
+  --red:           #ef4444;
+  --green:         #22c55e;
+
+  --eagle3: #3b82f6;
+  --dflash: #d97706;
+  --peagle: #a855f7;
+  --mtp:    #059669;
+
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  --radius-sm:   0.5rem;
+  --radius-base: 0.75rem;
+  --radius-card: 1.25rem;
+  --max-w:       76rem;
+  --nav-h:       60px;
+
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.3), 0 12px 32px -12px rgba(0,0,0,0.5);
+  --shadow-lift: 0 2px 4px rgba(0,0,0,0.3), 0 20px 48px -16px rgba(0,0,0,0.6);
+}
+
+/* ============================================================
+   Reset & Base
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text-1);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+a { color: var(--blue); text-decoration: none; }
+
+::selection { background: rgba(48,162,255,0.35); }
+
+/* ============================================================
+   Scroll reveal
+   ============================================================ */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .art-float, .art-float-2 { animation: none !important; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
+}
+
+/* ============================================================
+   Top navigation
+   ============================================================ */
+.topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--nav-h);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  background: rgba(2,6,23,0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.topbar-inner {
+  max-width: var(--max-w);
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--text-1);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+}
+.brand:hover { text-decoration: none; }
+.brand-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0b4f8f 0%, var(--blue) 100%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px rgba(48,162,255,0.35);
+  flex-shrink: 0;
+}
+.brand-mark svg { width: 16px; height: 16px; }
+.brand span.brand-sub {
+  color: var(--text-3);
+  font-weight: 500;
+  font-size: 0.8125rem;
+  margin-left: 0.125rem;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+}
+.nav-links a {
+  color: var(--text-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color 200ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+.nav-links a:hover { color: var(--text-1); text-decoration: none; }
+.nav-links a:focus-visible,
+.brand:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.nav-cta {
+  padding: 0.4375rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-input);
+  color: var(--text-1) !important;
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
+  transition: border-color 200ms ease, background 200ms ease !important;
+}
+.nav-cta:hover {
+  border-color: rgba(48,162,255,0.5);
+  background: var(--blue-soft);
+}
+@media (max-width: 720px) {
+  .nav-links { gap: 1.125rem; }
+  .nav-links a:not(.nav-cta):nth-child(2) { display: none; }
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8125rem 1.75rem;
+  border-radius: var(--radius-base);
+  font-family: var(--sans);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 250ms ease;
+  text-decoration: none;
+}
+.btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.btn-primary {
+  background: var(--yellow);
+  color: #1a1200;
+  box-shadow: 0 0 24px rgba(253,181,23,0.25), 0 4px 12px rgba(0,0,0,0.3);
+}
+.btn-primary:hover {
+  background: var(--yellow-hover);
+  box-shadow: 0 0 36px rgba(253,181,23,0.4), 0 6px 16px rgba(0,0,0,0.35);
+  transform: translateY(-2px);
+  text-decoration: none;
+}
+.btn-ghost {
+  background: rgba(255,255,255,0.03);
+  color: var(--text-1);
+  border: 1px solid var(--border-input);
+}
+.btn-ghost:hover {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.3);
+  transform: translateY(-2px);
+  text-decoration: none;
+}
+.btn svg { width: 15px; height: 15px; }
+
+/* ============================================================
+   Hero — split composition
+   ============================================================ */
+.hero {
+  position: relative;
+  padding: calc(var(--nav-h) + 5rem) 1.5rem 6rem;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 75% 40%, rgba(48,162,255,0.13), transparent 65%),
+    radial-gradient(ellipse 40% 35% at 15% 85%, rgba(253,181,23,0.06), transparent 60%);
+  pointer-events: none;
+}
+/* Faint horizon grid line under the hero */
+.hero::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(48,162,255,0.35), transparent);
+  pointer-events: none;
+}
+.hero-grid {
+  position: relative;
+  z-index: 1;
+  max-width: var(--max-w);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: 999px;
+  border: 1px solid rgba(48,162,255,0.3);
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+.eyebrow .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--blue);
+  box-shadow: 0 0 8px var(--blue);
+}
+
+.hero h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.25rem;
+}
+.hero h1 .accent {
+  background: linear-gradient(100deg, var(--blue) 10%, #7cc4ff 55%, var(--yellow) 105%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.hero-sub {
+  font-size: 1.125rem;
+  color: var(--text-2);
+  max-width: 32rem;
+  margin-bottom: 2.25rem;
+  line-height: 1.65;
+}
+.hero-ctas {
+  display: flex;
+  gap: 0.875rem;
+  flex-wrap: wrap;
+  margin-bottom: 2.5rem;
+}
+.hero-proof {
+  display: flex;
+  gap: 2.25rem;
+  flex-wrap: wrap;
+}
+.proof-item .proof-val {
+  font-family: var(--mono);
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.proof-item .proof-val em { font-style: normal; color: var(--yellow); }
+.proof-item .proof-label {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  margin-top: 0.125rem;
+}
+
+/* ---------- Product art (pure HTML/CSS mini-dashboard) ---------- */
+.art-stage {
+  position: relative;
+  perspective: 1400px;
+  min-height: 420px;
+}
+.art-glow {
+  position: absolute;
+  inset: 8% -4%;
+  background: radial-gradient(ellipse 55% 55% at 50% 45%, rgba(48,162,255,0.22), transparent 70%);
+  filter: blur(12px);
+  pointer-events: none;
+}
+.art-card {
+  position: absolute;
+  border-radius: var(--radius-card);
+  border: 1px solid rgba(255,255,255,0.12);
+  background: linear-gradient(160deg, #111c33 0%, var(--surface) 60%);
+  box-shadow: var(--shadow-lift), 0 0 60px -18px rgba(48,162,255,0.4);
+  overflow: hidden;
+}
+.art-card--main {
+  inset: 12% 4% 10% 8%;
+  transform: rotateY(-9deg) rotateX(4deg);
+  transform-style: preserve-3d;
+  z-index: 2;
+}
+.art-card--back {
+  inset: 26% 14% 0 -2%;
+  transform: rotateY(-14deg) rotateX(6deg) scale(0.92);
+  opacity: 0.55;
+  z-index: 1;
+  filter: blur(0.4px);
+}
+.art-chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.art-chrome .cdot { width: 9px; height: 9px; border-radius: 50%; }
+.art-chrome .cdot:nth-child(1) { background: #f87171; }
+.art-chrome .cdot:nth-child(2) { background: #fbbf24; }
+.art-chrome .cdot:nth-child(3) { background: #34d399; }
+.art-chrome .art-title {
+  margin-left: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  color: var(--text-3);
+}
+.art-body { padding: 1.125rem 1.25rem 1.25rem; }
+.art-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 0.75rem;
+}
+.art-row:last-child { border-bottom: none; }
+.art-row .art-name { color: var(--text-2); font-weight: 500; }
+.art-row .art-badge {
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0.125rem 0.4375rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.art-row .art-val { font-family: var(--mono); font-weight: 600; color: var(--text-1); }
+
+.art-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 72px;
+  padding: 0.75rem 0 0.25rem;
+}
+.art-bars .abar {
+  flex: 1;
+  border-radius: 3px 3px 1px 1px;
+  background: linear-gradient(180deg, #5cb8ff, var(--blue));
+  opacity: 0.85;
+  box-shadow: 0 0 10px -2px rgba(48,162,255,0.5);
+}
+.art-bars .abar.hot {
+  background: linear-gradient(180deg, #ffd166, var(--yellow));
+  box-shadow: 0 0 12px -2px rgba(253,181,23,0.55);
+  opacity: 1;
+}
+.art-caption {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  color: var(--text-3);
+  padding-top: 0.25rem;
+}
+
+/* Floating metric chips */
+.art-float, .art-float-2 {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.9375rem;
+  border-radius: 0.875rem;
+  background: rgba(15,23,42,0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: var(--shadow-lift);
+  animation: floaty 6s ease-in-out infinite;
+}
+.art-float { top: 2%; right: 0; }
+.art-float-2 { bottom: 4%; left: 0; animation-delay: -3s; }
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.chip-ico {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.chip-ico--yellow { background: rgba(253,181,23,0.15); color: var(--yellow); }
+.chip-ico--blue { background: var(--blue-soft); color: var(--blue); }
+.chip-ico svg { width: 15px; height: 15px; }
+.chip-text .chip-val {
+  font-family: var(--mono);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-1);
+  line-height: 1.25;
+}
+.chip-text .chip-label { font-size: 0.625rem; color: var(--text-3); }
+
+@media (max-width: 980px) {
+  .hero-grid { grid-template-columns: 1fr; gap: 3.5rem; }
+  .hero { padding-bottom: 4.5rem; }
+  .hero h1 { font-size: 2.375rem; }
+  .art-stage { min-height: 380px; max-width: 34rem; margin: 0 auto; width: 100%; }
+}
+@media (max-width: 480px) {
+  .hero h1 { font-size: 2rem; }
+  .art-float { right: -2%; }
+  .art-float-2 { left: -2%; }
+}
+
+/* ============================================================
+   Section shell
+   ============================================================ */
+.section { padding: 5rem 1.5rem; position: relative; }
+.section-inner { max-width: var(--max-w); margin: 0 auto; }
+.section-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 0.75rem;
+}
+.section-title {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.625rem;
+}
+.section-desc {
+  font-size: 1rem;
+  color: var(--text-2);
+  max-width: 40rem;
+  margin-bottom: 2.5rem;
+}
+
+/* ============================================================
+   Bento grid
+   ============================================================ */
+.bento {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-auto-rows: minmax(10rem, auto);
+  gap: 1.25rem;
+}
+.bento-cell {
+  position: relative;
+  background: linear-gradient(165deg, #101a30 0%, var(--surface) 70%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 1.75rem;
+  overflow: hidden;
+  transition: border-color 300ms ease, transform 300ms ease, box-shadow 300ms ease;
+}
+.bento-cell:hover {
+  border-color: rgba(48,162,255,0.3);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card), 0 0 32px -8px rgba(48,162,255,0.15);
+}
+.bento-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 0.75rem;
+}
+.bento-copy { font-size: 0.875rem; color: var(--text-2); margin-top: 0.75rem; max-width: 26rem; }
+
+.bento-hero { grid-column: span 4; grid-row: span 2; display: flex; flex-direction: column; }
+.bento-hero .big-num {
+  font-family: var(--mono);
+  font-size: 5.5rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  background: linear-gradient(120deg, var(--yellow) 20%, #ffdf8e 60%, var(--yellow) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  margin: auto 0 0.5rem;
+}
+.bento-hero .big-sub { font-size: 0.9375rem; color: var(--text-2); max-width: 24rem; }
+.bento-hero::after {
+  content: '';
+  position: absolute;
+  right: -60px; top: -60px;
+  width: 240px; height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(253,181,23,0.14), transparent 70%);
+  pointer-events: none;
+}
+.bento-hero .hero-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 56px;
+  margin-top: 1.5rem;
+}
+.bento-hero .hero-bars span {
+  flex: 0 0 22px;
+  border-radius: 3px 3px 1px 1px;
+  background: linear-gradient(180deg, rgba(253,181,23,0.85), rgba(253,181,23,0.35));
+}
+.bento-hero .hero-bars span.cool {
+  background: linear-gradient(180deg, rgba(48,162,255,0.8), rgba(48,162,255,0.3));
+}
+
+.bento-half { grid-column: span 2; }
+.bento-half .med-num {
+  font-family: var(--mono);
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-1);
+  line-height: 1.15;
+}
+.bento-half .med-num em { font-style: normal; color: var(--blue); }
+.bento-third { grid-column: span 3; }
+
+/* How-it-works mini diagram */
+.how-diagram {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 1.25rem;
+}
+.how-node {
+  flex: 1;
+  text-align: center;
+  padding: 0.75rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: rgba(2,6,23,0.5);
+}
+.how-node .how-t { font-size: 0.75rem; font-weight: 600; color: var(--text-1); }
+.how-node .how-s { font-family: var(--mono); font-size: 0.625rem; color: var(--text-3); margin-top: 0.125rem; }
+.how-arrow {
+  flex: 0 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--blue);
+  font-size: 1rem;
+}
+
+/* Deploy command cell */
+.mini-code {
+  margin-top: 1rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.875rem 1rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  line-height: 1.7;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.mini-code .cmd { color: var(--blue); font-weight: 500; }
+.mini-code .flag { color: var(--yellow); }
+.mini-code .val { color: var(--text-1); }
+.mini-code .cmt { color: var(--text-3); }
+
+@media (max-width: 900px) {
+  .bento { grid-template-columns: repeat(2, 1fr); }
+  .bento-hero { grid-column: span 2; grid-row: auto; }
+  .bento-half { grid-column: span 1; }
+  .bento-third { grid-column: span 2; }
+  .bento-hero .big-num { font-size: 4rem; }
+}
+@media (max-width: 560px) {
+  .bento { grid-template-columns: 1fr; }
+  .bento-half, .bento-third, .bento-hero { grid-column: span 1; }
+}
+
+/* ============================================================
+   Scroll-story strip
+   ============================================================ */
+.story-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+  padding: 3.25rem 0;
+}
+.story-row + .story-row { border-top: 1px solid rgba(255,255,255,0.05); }
+.story-row.flip .story-visual { order: 2; }
+.story-kicker {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--yellow);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.625rem;
+}
+.story-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.75rem;
+}
+.story-text { font-size: 0.9375rem; color: var(--text-2); max-width: 28rem; }
+
+.story-visual {
+  position: relative;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+  background: linear-gradient(160deg, #101a30, var(--surface));
+  box-shadow: var(--shadow-card);
+  padding: 1.5rem;
+  overflow: hidden;
+}
+.story-visual::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 60% at 70% 20%, rgba(48,162,255,0.1), transparent 70%);
+  pointer-events: none;
+}
+
+/* Token draft/verify visual */
+.token-flow { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; position: relative; }
+.tok {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 0.375rem 0.625rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  background: rgba(2,6,23,0.6);
+}
+.tok.draft { border-color: rgba(48,162,255,0.4); color: var(--blue); background: rgba(48,162,255,0.08); }
+.tok.accept { border-color: rgba(34,197,94,0.45); color: var(--green); background: rgba(34,197,94,0.08); }
+.tok.reject { border-color: rgba(239,68,68,0.4); color: var(--red); background: rgba(239,68,68,0.06); text-decoration: line-through; }
+.tok-arrow { color: var(--text-3); font-size: 0.75rem; }
+.token-legend {
+  display: flex;
+  gap: 1.25rem;
+  margin-top: 1.125rem;
+  font-size: 0.6875rem;
+  color: var(--text-3);
+  position: relative;
+}
+.token-legend .lg { display: inline-flex; align-items: center; gap: 0.375rem; }
+.token-legend .swatch { width: 8px; height: 8px; border-radius: 2px; }
+
+/* Pipeline visual */
+.pipe { display: flex; align-items: stretch; gap: 0; position: relative; }
+.pipe-step {
+  flex: 1;
+  text-align: center;
+  padding: 1rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: rgba(2,6,23,0.55);
+  border: 1px solid var(--border);
+}
+.pipe-step .pipe-t { font-size: 0.75rem; font-weight: 600; }
+.pipe-step .pipe-s { font-family: var(--mono); font-size: 0.625rem; color: var(--text-3); margin-top: 0.25rem; }
+.pipe-link {
+  flex: 0 0 1.75rem;
+  align-self: center;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(48,162,255,0.1), var(--blue));
+  position: relative;
+}
+.pipe-link::after {
+  content: '';
+  position: absolute;
+  right: 0; top: -3px;
+  border-left: 6px solid var(--blue);
+  border-top: 3.5px solid transparent;
+  border-bottom: 3.5px solid transparent;
+}
+.pipe-badge {
+  display: inline-block;
+  margin-top: 1.125rem;
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  color: var(--green);
+  border: 1px solid rgba(34,197,94,0.35);
+  background: rgba(34,197,94,0.08);
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  position: relative;
+}
+
+/* Terminal visual */
+.term {
+  background: #010409;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+.term-head {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.term-head span { width: 8px; height: 8px; border-radius: 50%; background: var(--muted-surface); }
+.term-body {
+  padding: 1rem 1.125rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  line-height: 1.8;
+  color: var(--text-2);
+}
+.term-body .prompt { color: var(--green); }
+.term-body .cmd { color: var(--text-1); }
+.term-body .flag { color: var(--yellow); }
+.term-body .out { color: var(--text-3); }
+
+@media (max-width: 900px) {
+  .story-row { grid-template-columns: 1fr; gap: 1.75rem; padding: 2.5rem 0; }
+  .story-row.flip .story-visual { order: 0; }
+}
+
+/* ============================================================
+   Stats row (data-driven)
+   ============================================================ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 2.75rem;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 1.5rem 1.75rem;
+  box-shadow: var(--shadow-card);
+  transition: border-color 300ms ease, transform 300ms ease;
+}
+.stat-card:hover { border-color: rgba(48,162,255,0.3); transform: translateY(-3px); }
+.stat-val {
+  font-family: var(--mono);
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+.stat-label { font-size: 0.8125rem; color: var(--text-2); margin-top: 0.375rem; font-weight: 500; }
+.stat-sublabel { font-size: 0.6875rem; color: var(--text-3); margin-top: 0.125rem; font-family: var(--mono); }
+@media (max-width: 640px) {
+  .stats-grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   Target tabs
+   ============================================================ */
+.target-tabs {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+}
+.target-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-3);
+  font-family: var(--sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 250ms ease;
+}
+.target-tab:hover { color: var(--text-2); }
+.target-tab:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.target-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  background: var(--muted-surface);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.target-tab.active .tab-count { background: var(--blue-soft); color: var(--blue); }
+
+/* ============================================================
+   Filter bar
+   ============================================================ */
+.filters {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 1.25rem 0 0;
+}
+.filter-select, .filter-input {
+  background: var(--surface);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font-family: var(--sans);
+  font-size: 0.875rem;
+  padding: 0.625rem 1rem;
+  outline: none;
+  transition: border-color 250ms ease, box-shadow 250ms ease;
+}
+.filter-select { min-width: 180px; }
+.filter-input { flex: 1; min-width: 200px; }
+.filter-select:focus, .filter-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(48,162,255,0.15);
+}
+.filter-select option { background: var(--surface); color: var(--text-1); }
+
+/* ============================================================
+   Data table — elevated card
+   ============================================================ */
+.table-card {
+  margin-top: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.table-scroll { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+thead th {
+  position: sticky;
+  top: 0;
+  background: var(--muted-surface);
+  text-align: left;
+  padding: 0.875rem 1rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: color 250ms ease;
+  z-index: 1;
+}
+thead th:hover { color: var(--text-2); }
+thead th .sort-arrow { font-size: 0.625rem; margin-left: 0.375rem; color: var(--blue); }
+th.right, td.right { text-align: right; }
+
+tbody tr { transition: background 250ms ease; cursor: pointer; }
+tbody tr.model-row:hover { background: rgba(30,41,59,0.6); }
+tbody tr.model-row.expanded { background: rgba(48,162,255,0.05); }
+tbody tr.failed-row { opacity: 0.5; }
+
+td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: middle;
+}
+
+.model-name { display: flex; flex-direction: column; gap: 0.25rem; }
+.model-name a { font-weight: 600; font-size: 0.9375rem; color: var(--text-1); transition: color 250ms ease; }
+.model-name a:hover { color: var(--blue); text-decoration: none; }
+.model-target { font-size: 0.75rem; color: var(--text-3); }
+
+.algo-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.algo-eagle3 { background: rgba(59,130,246,0.15); color: #3b82f6; }
+.algo-dflash { background: rgba(217,119,6,0.15); color: #d97706; }
+.algo-peagle { background: rgba(168,85,247,0.15); color: #a855f7; }
+.algo-mtp    { background: rgba(5,150,105,0.15); color: #059669; }
+.algo-other  { background: rgba(148,163,184,0.15); color: var(--text-2); }
+
+.spd-badge {
+  display: inline-block;
+  padding: 0.1875rem 0.625rem;
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.spd-excellent { background: rgba(34,197,94,0.15); color: #22c55e; }
+.spd-good      { background: rgba(59,130,246,0.15); color: #3b82f6; }
+.spd-moderate  { background: rgba(253,181,23,0.15); color: #fdb517; }
+.spd-low       { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+.hw-chip {
+  display: inline-block;
+  padding: 0.1875rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--muted-surface);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.spark { display: inline-flex; align-items: flex-end; gap: 2px; height: 20px; vertical-align: middle; }
+.spark-bar {
+  width: 6px;
+  min-height: 2px;
+  border-radius: 1px;
+  background: var(--blue);
+  opacity: 0.7;
+  transition: opacity 250ms ease;
+}
+.model-row:hover .spark-bar { opacity: 1; }
+
+.deploy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--blue-soft);
+  border: 1px solid rgba(48,162,255,0.25);
+  color: var(--blue);
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 250ms ease;
+  white-space: nowrap;
+}
+.deploy-btn svg { width: 14px; height: 14px; }
+.deploy-btn:hover { background: rgba(48,162,255,0.2); border-color: var(--blue); transform: translateY(-1px); }
+.deploy-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.metric-val { font-family: var(--mono); font-weight: 600; font-size: 0.9375rem; }
+.metric-unit { font-size: 0.6875rem; color: var(--text-3); margin-left: 3px; }
+
+tr.detail-row > td { padding: 0; border-bottom: 1px solid var(--border); }
+.detail-inner {
+  border-top: 1px solid var(--border);
+  padding: 1.25rem 1.5rem;
+  background: rgba(2,6,23,0.45);
+}
+.detail-tabs { display: flex; gap: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
+.detail-tab {
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-3);
+  font-family: var(--sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 250ms ease;
+}
+.detail-tab:hover { color: var(--text-2); }
+.detail-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+.accept-strip { margin: 0.25rem 0 1.25rem; }
+.accept-strip-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin-bottom: 0.625rem;
+}
+.accept-bars { display: flex; align-items: flex-end; gap: 0.625rem; height: 72px; }
+.accept-col { display: flex; flex-direction: column; align-items: center; gap: 0.375rem; height: 100%; justify-content: flex-end; }
+.accept-col .abar2 {
+  width: 34px;
+  border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(180deg, #5cb8ff, var(--blue));
+  box-shadow: 0 0 10px -3px rgba(48,162,255,0.5);
+}
+.accept-col .aval { font-family: var(--mono); font-size: 0.625rem; color: var(--text-2); }
+.accept-col .apos { font-family: var(--mono); font-size: 0.5625rem; color: var(--text-3); }
+
+.subset-tbl { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+.subset-tbl th {
+  position: static;
+  background: transparent;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+  border-bottom: 1px solid var(--border);
+  cursor: default;
+}
+.subset-tbl th.num { text-align: right; }
+.subset-tbl td { padding: 0.5rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.subset-tbl td.num { text-align: right; font-family: var(--mono); font-weight: 500; }
+.subset-tbl td.best { color: var(--green); }
+.subset-tbl .unit { font-size: 0.625rem; color: var(--text-3); margin-left: 2px; }
+.subset-name { font-weight: 500; }
+
+.deploy-panel { padding: 0.25rem 0; }
+.deploy-panel-title { font-size: 0.9375rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text-1); }
+.code-block {
+  position: relative;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.25rem;
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  color: var(--text-2);
+}
+.code-block .cmd { color: var(--blue); font-weight: 500; }
+.code-block .flag { color: var(--yellow); }
+.code-block .val { color: var(--text-1); }
+.copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-sm);
+  background: var(--muted-surface);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-family: var(--sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 250ms ease;
+}
+.copy-btn:hover { background: var(--surface); color: var(--text-1); }
+.deploy-meta { display: flex; gap: 1.5rem; margin-top: 0.75rem; font-size: 0.75rem; color: var(--text-3); flex-wrap: wrap; }
+.deploy-pending { color: var(--text-3); font-style: italic; font-size: 0.8125rem; }
+
+tr.deploy-row > td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(2,6,23,0.45);
+}
+
+.placeholder { text-align: center; color: var(--text-3); padding: 3rem 2rem; font-size: 0.9375rem; }
+
+/* ============================================================
+   Chart section
+   ============================================================ */
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 1.5rem;
+  transition: border-color 300ms ease;
+}
+.chart-card:hover { border-color: rgba(48,162,255,0.25); }
+.chart-container { height: 400px; width: 100%; }
+
+/* ============================================================
+   Footer
+   ============================================================ */
+.site-footer {
+  border-top: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(15,23,42,0.4), rgba(2,6,23,0));
+  padding: 4rem 1.5rem 7rem;
+}
+.footer-inner { max-width: var(--max-w); margin: 0 auto; }
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  gap: 2.5rem;
+  margin-bottom: 3rem;
+}
+.footer-brand p {
+  font-size: 0.8125rem;
+  color: var(--text-3);
+  margin-top: 0.875rem;
+  max-width: 20rem;
+  line-height: 1.7;
+}
+.footer-col h4 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-bottom: 1rem;
+}
+.footer-col ul { list-style: none; }
+.footer-col li { margin-bottom: 0.625rem; }
+.footer-col a {
+  font-size: 0.8125rem;
+  color: var(--text-3);
+  transition: color 200ms ease;
+}
+.footer-col a:hover { color: var(--text-1); text-decoration: none; }
+.footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-top: 1.75rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+.footer-bottom .community-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(15,23,42,0.6);
+}
+.footer-bottom .community-note .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--yellow);
+  box-shadow: 0 0 8px rgba(253,181,23,0.7);
+}
+.footer-bottom code {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  background: var(--muted-surface);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+}
+@media (max-width: 860px) {
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 520px) {
+  .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
+}
+
+/* ============================================================
+   Prototype switcher (NOT part of the evaluated design)
+   ============================================================ */
+.proto-switcher {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem;
+  border-radius: 999px;
+  background: rgba(248,250,252,0.96);
+  color: #0f172a;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.2);
+  font-family: var(--sans);
+}
+.proto-switcher a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  color: #0f172a;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  transition: background 200ms ease;
+}
+.proto-switcher a:hover { background: rgba(15,23,42,0.1); text-decoration: none; }
+.proto-switcher .proto-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0 0.625rem;
+  color: #334155;
+}
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       Top navigation
+       ============================================================ -->
+  <nav class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#top" aria-label="Speculators home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z" fill="white" stroke="none"/>
+          </svg>
+        </span>
+        Speculators <span class="brand-sub">for vLLM</span>
+      </a>
+      <div class="nav-links">
+        <a href="https://docs.vllm.ai" target="_blank" rel="noopener">Docs</a>
+        <a href="https://vllm.ai" target="_blank" rel="noopener">vLLM</a>
+        <a href="https://github.com/vllm-project/speculators" target="_blank" rel="noopener">GitHub</a>
+        <a class="nav-cta" href="#benchmarks">Benchmarks</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ============================================================
+       Hero — split composition
+       ============================================================ -->
+  <header class="hero" id="top">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="dot"></span> Speculative Decoding Evals</span>
+        <h1>The whole collection.<br><span class="accent">Measured.</span></h1>
+        <p class="hero-sub">
+          Speculators benchmarks every drafter in the RedHatAI speculator-models collection
+          against real vLLM serving workloads — acceptance length, throughput, and latency —
+          so you can pick the fastest configuration for your model with confidence.
+        </p>
+        <div class="hero-ctas">
+          <a class="btn btn-primary" href="#benchmarks">
+            Browse benchmarks
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/vllm-project/speculators" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2.17c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.75 2.69 1.25 3.34.95.1-.74.4-1.25.72-1.53-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.78 0c2.21-1.49 3.18-1.18 3.18-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.35.77 1.05.77 2.12v3.15c0 .31.21.68.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+            View on GitHub
+          </a>
+        </div>
+        <div class="hero-proof">
+          <div class="proof-item">
+            <div class="proof-val" id="proof-speedup"><em>2.9x</em></div>
+            <div class="proof-label">Best decode speedup</div>
+          </div>
+          <div class="proof-item">
+            <div class="proof-val" id="proof-models">24+</div>
+            <div class="proof-label">Drafters evaluated</div>
+          </div>
+          <div class="proof-item">
+            <div class="proof-val">4</div>
+            <div class="proof-label">Algorithms tracked</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product art: stylized mini-dashboard, pure HTML/CSS -->
+      <div class="art-stage" aria-hidden="true">
+        <div class="art-glow"></div>
+
+        <div class="art-card art-card--back">
+          <div class="art-chrome">
+            <span class="cdot"></span><span class="cdot"></span><span class="cdot"></span>
+            <span class="art-title">acceptance_length / nightly</span>
+          </div>
+          <div class="art-body">
+            <svg viewBox="0 0 320 110" width="100%" height="110" fill="none">
+              <path d="M0 88 C40 82, 70 60, 110 62 S 190 30, 230 34 S 300 18, 320 14"
+                    stroke="rgba(48,162,255,0.85)" stroke-width="2.5" stroke-linecap="round"/>
+              <path d="M0 88 C40 82, 70 60, 110 62 S 190 30, 230 34 S 300 18, 320 14 L320 110 L0 110 Z"
+                    fill="rgba(48,162,255,0.08)"/>
+              <circle cx="230" cy="34" r="4" fill="#fdb517"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="art-card art-card--main">
+          <div class="art-chrome">
+            <span class="cdot"></span><span class="cdot"></span><span class="cdot"></span>
+            <span class="art-title">speculators — Qwen3-8B</span>
+          </div>
+          <div class="art-body">
+            <div class="art-row">
+              <span class="art-name">eagle3_2l</span>
+              <span class="art-badge" style="background:rgba(59,130,246,0.15);color:#3b82f6;">eagle3</span>
+              <span class="art-val">891 <span style="color:#64748b;font-size:0.625rem;">tok/s</span></span>
+            </div>
+            <div class="art-row">
+              <span class="art-name">dflash_2l</span>
+              <span class="art-badge" style="background:rgba(217,119,6,0.15);color:#d97706;">dflash</span>
+              <span class="art-val">792 <span style="color:#64748b;font-size:0.625rem;">tok/s</span></span>
+            </div>
+            <div class="art-row">
+              <span class="art-name">mtp</span>
+              <span class="art-badge" style="background:rgba(5,150,105,0.15);color:#059669;">mtp</span>
+              <span class="art-val">760 <span style="color:#64748b;font-size:0.625rem;">tok/s</span></span>
+            </div>
+            <div class="art-bars">
+              <span class="abar" style="height:38%"></span>
+              <span class="abar" style="height:52%"></span>
+              <span class="abar" style="height:44%"></span>
+              <span class="abar" style="height:66%"></span>
+              <span class="abar" style="height:58%"></span>
+              <span class="abar" style="height:74%"></span>
+              <span class="abar hot" style="height:92%"></span>
+            </div>
+            <div class="art-caption"><span>baseline</span><span>eagle3_2l</span></div>
+          </div>
+        </div>
+
+        <div class="art-float">
+          <span class="chip-ico chip-ico--yellow">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z"/></svg>
+          </span>
+          <span class="chip-text">
+            <span class="chip-val">2.9x</span>
+            <span class="chip-label">decode speedup</span>
+          </span>
+        </div>
+
+        <div class="art-float-2">
+          <span class="chip-ico chip-ico--blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+          </span>
+          <span class="chip-text">
+            <span class="chip-val">2.71</span>
+            <span class="chip-label">acceptance length</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       Bento grid — stats + features
+       ============================================================ -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="reveal">
+        <div class="section-eyebrow">Why Speculators</div>
+        <h2 class="section-title">Faster decode, proven in numbers</h2>
+        <p class="section-desc">One dashboard for the whole speculative-decoding landscape — measured on vLLM, refreshed continuously.</p>
+      </div>
+
+      <div class="bento">
+        <div class="bento-cell bento-hero reveal">
+          <div class="bento-label">Best observed speedup</div>
+          <div class="big-num">2.9x</div>
+          <p class="big-sub">Top drafter–target pairs more than double decode throughput versus standard autoregressive serving on identical hardware.</p>
+          <div class="hero-bars" aria-hidden="true">
+            <span class="cool" style="height:34%"></span>
+            <span class="cool" style="height:34%"></span>
+            <span class="cool" style="height:34%"></span>
+            <span style="height:100%"></span>
+          </div>
+        </div>
+
+        <div class="bento-cell bento-half reveal">
+          <div class="bento-label">Avg acceptance length</div>
+          <div class="med-num">3.2 <em>tok</em></div>
+          <p class="bento-copy">Tokens verified per forward pass across the leaderboard's top drafters.</p>
+        </div>
+
+        <div class="bento-cell bento-half reveal">
+          <div class="bento-label">Algorithms compared</div>
+          <div class="med-num">4</div>
+          <p class="bento-copy">EAGLE-3, DFlash, Prompt-EAGLE and MTP — scored on equal footing.</p>
+        </div>
+
+        <div class="bento-cell bento-third reveal">
+          <div class="bento-label">How it works</div>
+          <div class="how-diagram">
+            <div class="how-node">
+              <div class="how-t">Draft</div>
+              <div class="how-s">k tokens, cheap</div>
+            </div>
+            <div class="how-arrow">&#8594;</div>
+            <div class="how-node">
+              <div class="how-t">Verify</div>
+              <div class="how-s">1 target pass</div>
+            </div>
+            <div class="how-arrow">&#8594;</div>
+            <div class="how-node">
+              <div class="how-t">Accept</div>
+              <div class="how-s">keep the prefix</div>
+            </div>
+          </div>
+          <p class="bento-copy">A small drafter proposes tokens; the target model verifies them in parallel. Accepted tokens cost a fraction of a normal decode step.</p>
+        </div>
+
+        <div class="bento-cell bento-third reveal">
+          <div class="bento-label">Deploy in one command</div>
+          <div class="mini-code"><span class="cmt"># any drafter from the leaderboard</span><br><span class="cmd">vllm serve</span> <span class="val">Qwen/Qwen3-8B</span> <span class="flag">--speculative-model</span> <span class="val">RedHatAI/...</span></div>
+          <p class="bento-copy">Every row ships a copy-paste <code style="font-family:var(--mono);font-size:0.8125rem;">vllm serve</code> command — vLLM auto-detects the algorithm.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       Scroll-story strip
+       ============================================================ -->
+  <section class="section" style="padding-top: 2rem;">
+    <div class="section-inner">
+
+      <div class="story-row reveal">
+        <div class="story-copy">
+          <div class="story-kicker">01 / METHOD</div>
+          <h3 class="story-title">Draft fast, verify once</h3>
+          <p class="story-text">
+            Speculative decoding trades a cheap drafter's guesses against one parallel
+            verification pass. The dashboard surfaces acceptance-at-position for every
+            drafter, so you can see exactly how deep the drafts hold up.
+          </p>
+        </div>
+        <div class="story-visual">
+          <div class="token-flow">
+            <span class="tok draft">draft: "def"</span>
+            <span class="tok-arrow">&#8594;</span>
+            <span class="tok accept">"def"</span>
+            <span class="tok accept">" quick"</span>
+            <span class="tok reject">" sort"</span>
+            <span class="tok-arrow">&#8594;</span>
+            <span class="tok">resample</span>
+          </div>
+          <div class="token-legend">
+            <span class="lg"><span class="swatch" style="background:#30a2ff;"></span> drafted</span>
+            <span class="lg"><span class="swatch" style="background:#22c55e;"></span> accepted</span>
+            <span class="lg"><span class="swatch" style="background:#ef4444;"></span> rejected</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="story-row flip reveal">
+        <div class="story-copy">
+          <div class="story-kicker">02 / PIPELINE</div>
+          <h3 class="story-title">Fresh evals, on every merge</h3>
+          <p class="story-text">
+            Nightly runs re-benchmark every published drafter against its target on fixed
+            hardware and fixed datasets. Regressions show up in the table before they show
+            up in production.
+          </p>
+        </div>
+        <div class="story-visual">
+          <div class="pipe">
+            <div class="pipe-step">
+              <div class="pipe-t">Discover</div>
+              <div class="pipe-s">hub scan</div>
+            </div>
+            <div class="pipe-link"></div>
+            <div class="pipe-step">
+              <div class="pipe-t">Evaluate</div>
+              <div class="pipe-s">vllm bench</div>
+            </div>
+            <div class="pipe-link"></div>
+            <div class="pipe-step">
+              <div class="pipe-t">Publish</div>
+              <div class="pipe-s">results.json</div>
+            </div>
+          </div>
+          <span class="pipe-badge">&#10003; last run: nightly cron</span>
+        </div>
+      </div>
+
+      <div class="story-row reveal">
+        <div class="story-copy">
+          <div class="story-kicker">03 / DEPLOY</div>
+          <h3 class="story-title">Copy, paste, serve</h3>
+          <p class="story-text">
+            Found a winner? Each result carries a ready-made <code style="font-family:var(--mono);font-size:0.8125rem;">vllm serve</code>
+            command with the right speculative-model flags. No config archaeology required.
+          </p>
+        </div>
+        <div class="story-visual">
+          <div class="term">
+            <div class="term-head"><span></span><span></span><span></span></div>
+            <div class="term-body">
+              <span class="prompt">$</span> <span class="cmd">vllm serve Qwen/Qwen3-8B</span> \ <br>
+              &nbsp;&nbsp;<span class="flag">--speculative-model</span> RedHatAI/Qwen3-8B_speculators_eagle3_2l<br>
+              <span class="out">INFO &nbsp;Serving on http://0.0.0.0:8000 — 891 tok/s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
+       Benchmarks — stats row → tabs → filters → table
+       ============================================================ -->
+  <section class="section" id="benchmarks" style="padding-top: 3rem;">
+    <div class="section-inner">
+      <div class="reveal">
+        <div class="section-eyebrow">Live results</div>
+        <h2 class="section-title">The leaderboard</h2>
+        <p class="section-desc" id="benchmarks-desc">
+          Real eval numbers for every drafter we track. Click a row for per-subset metrics
+          and a deploy command. <span id="last-updated" style="color:var(--text-3);font-size:0.8125rem;"></span>
+        </p>
+      </div>
+
+      <!-- Stats row -->
+      <div class="stats-grid reveal">
+        <div class="stat-card">
+          <div class="stat-val" id="stat-models">&mdash;</div>
+          <div class="stat-label">Drafters evaluated</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-best">&mdash;</div>
+          <div class="stat-label" id="stat-best-label">Best Speedup</div>
+          <div class="stat-sublabel" id="stat-best-model"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-algos">&mdash;</div>
+          <div class="stat-label">Algorithms compared</div>
+        </div>
+      </div>
+
+      <!-- Target tabs -->
+      <div class="target-tabs reveal" id="target-tabs"></div>
+
+      <!-- Filter bar -->
+      <div class="filters reveal">
+        <select class="filter-select" id="filter-algorithm" aria-label="Filter by algorithm">
+          <option value="all">All Algorithms</option>
+        </select>
+        <input type="search" class="filter-input" id="filter-text" placeholder="Search models, targets, algorithms..." aria-label="Search models">
+      </div>
+
+      <!-- Data table -->
+      <div class="table-card reveal">
+        <div class="table-scroll">
+          <table id="models-table">
+            <thead>
+              <tr>
+                <th data-key="model">Drafter</th>
+                <th data-key="throughput_tps" class="right">Throughput</th>
+                <th data-key="speedup" class="right">Speedup</th>
+                <th data-key="acceptance_length" class="right">Accept. Len</th>
+                <th data-key="ttft_ms" class="right">TTFT</th>
+                <th data-key="itl_ms" class="right">ITL</th>
+                <th data-key="acceptance_at_pos">Accept@pos</th>
+                <th data-key="gpus">Hardware</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="models-tbody"></tbody>
+          </table>
+        </div>
+        <div id="placeholder" class="placeholder" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       Algorithm Comparison chart
+       ============================================================ -->
+  <section class="section" style="padding-top: 1rem;">
+    <div class="section-inner">
+      <div class="reveal">
+        <h2 class="section-title" style="font-size:1.625rem;">Algorithm Comparison</h2>
+        <p class="section-desc" id="chart-desc" style="margin-bottom:1.5rem;">Best throughput by algorithm across target models</p>
+      </div>
+      <div class="chart-card reveal">
+        <div id="chart-algo-compare" class="chart-container"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       Footer
+       ============================================================ -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="#top">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z" fill="white"/></svg>
+            </span>
+            Speculators
+          </a>
+          <p>
+            Independent benchmarks for speculative decoding on vLLM. Acceptance length,
+            throughput and latency for every model in the RedHatAI speculator-models
+            collection — measured, not marketed.
+          </p>
+        </div>
+        <div class="footer-col">
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="https://docs.vllm.ai" target="_blank" rel="noopener">vLLM Docs</a></li>
+            <li><a href="https://docs.vllm.ai/en/latest/features/spec_decode.html" target="_blank" rel="noopener">Speculative Decoding Guide</a></li>
+            <li><a href="https://huggingface.co/collections/RedHatAI/speculator-models" target="_blank" rel="noopener">Model Collection</a></li>
+            <li><a href="https://blog.vllm.ai" target="_blank" rel="noopener">vLLM Blog</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Community</h4>
+          <ul>
+            <li><a href="https://github.com/vllm-project/speculators" target="_blank" rel="noopener">GitHub — Speculators</a></li>
+            <li><a href="https://github.com/vllm-project/vllm" target="_blank" rel="noopener">GitHub — vLLM</a></li>
+            <li><a href="https://discuss.vllm.ai" target="_blank" rel="noopener">Forum</a></li>
+            <li><a href="https://slack.vllm.ai" target="_blank" rel="noopener">Slack</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Project</h4>
+          <ul>
+            <li><a href="#benchmarks">Leaderboard</a></li>
+            <li><a href="https://github.com/vllm-project/speculators/issues" target="_blank" rel="noopener">Report an issue</a></li>
+            <li><a href="https://vllm.ai" target="_blank" rel="noopener">vllm.ai</a></li>
+            <li><a href="https://redhat.com" target="_blank" rel="noopener">Red Hat AI</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span class="community-note"><span class="dot"></span> Community project for vLLM — not an official product page</span>
+        <span>Data source: <code>sample-results.json</code> &middot; &copy; 2025 Red Hat AI</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ============================================================
+       Prototype switcher (evaluation chrome — not part of the design)
+       ============================================================ -->
+  <div class="proto-switcher" role="navigation" aria-label="Prototype switcher">
+    <a href="marketing-blueprint.html" aria-label="Previous prototype">&larr;</a>
+    <span class="proto-label">Horizon</span>
+    <a href="marketing-aurora.html" aria-label="Next prototype">&rarr;</a>
+  </div>
+
+  <!-- ============================================================
+       Scripts
+       ============================================================ -->
+  <script type="application/json" id="embedded-results">
+{
+  "updated_at": "2025-07-25T14:30:00Z",
+  "models": [
+    {
+      "model": "RedHatAI/Qwen3-8B_speculators_eagle3_2l",
+      "target": "Qwen/Qwen3-8B",
+      "algorithm": "eagle3",
+      "num_speculative_tokens": 3,
+      "hf_last_modified": "2025-07-02T09:30:00Z",
+      "evaluated_at": "2025-07-10T14:20:00Z",
+      "gpus": "1xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.71,
+        "acceptance_at_pos": [0.82, 0.55, 0.34],
+        "num_drafts": 800,
+        "throughput_tps": 891,
+        "speedup": 2.22,
+        "ttft_ms": 39.8,
+        "itl_ms": 17.4,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.65,
+            "num_drafts": 400,
+            "num_draft_tokens": 1200,
+            "num_accepted_tokens": 660,
+            "acceptance_at_pos": [0.80, 0.53, 0.32],
+            "throughput_tps": 935,
+            "speedup": 2.35,
+            "ttft_ms": 39.2,
+            "itl_ms": 16.2
+          },
+          "qa": {
+            "acceptance_length": 2.77,
+            "num_drafts": 400,
+            "num_draft_tokens": 1200,
+            "num_accepted_tokens": 708,
+            "acceptance_at_pos": [0.84, 0.57, 0.36],
+            "throughput_tps": 862,
+            "speedup": 2.14,
+            "ttft_ms": 40.5,
+            "itl_ms": 18.1
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve Qwen/Qwen3-8B --speculative-model RedHatAI/Qwen3-8B_speculators_eagle3_2l",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    },
+    {
+      "model": "RedHatAI/Qwen3-8B_speculators_dflash_2l",
+      "target": "Qwen/Qwen3-8B",
+      "algorithm": "dflash",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-03T11:15:00Z",
+      "evaluated_at": "2025-07-10T16:45:00Z",
+      "gpus": "1xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.55,
+        "acceptance_at_pos": [0.72, 0.42, 0.25, 0.16],
+        "num_drafts": 800,
+        "throughput_tps": 792,
+        "speedup": 1.96,
+        "ttft_ms": 38.4,
+        "itl_ms": 19.7,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.49,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 596,
+            "acceptance_at_pos": [0.70, 0.40, 0.23, 0.16],
+            "throughput_tps": 830,
+            "speedup": 2.06,
+            "ttft_ms": 38.0,
+            "itl_ms": 18.5
+          },
+          "qa": {
+            "acceptance_length": 2.61,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 644,
+            "acceptance_at_pos": [0.74, 0.44, 0.27, 0.16],
+            "throughput_tps": 760,
+            "speedup": 1.88,
+            "ttft_ms": 39.2,
+            "itl_ms": 20.8
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve Qwen/Qwen3-8B --speculative-model RedHatAI/Qwen3-8B_speculators_dflash_2l",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    },
+    {
+      "model": "RedHatAI/Qwen3-8B_speculators_mtp",
+      "target": "Qwen/Qwen3-8B",
+      "algorithm": "mtp",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-04T08:00:00Z",
+      "evaluated_at": "2025-07-11T09:30:00Z",
+      "gpus": "1xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.38,
+        "acceptance_at_pos": [0.65, 0.38, 0.22, 0.13],
+        "num_drafts": 800,
+        "throughput_tps": 760,
+        "speedup": 1.89,
+        "ttft_ms": 44.6,
+        "itl_ms": 20.3,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.32,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 528,
+            "acceptance_at_pos": [0.63, 0.36, 0.20, 0.13],
+            "throughput_tps": 795,
+            "speedup": 1.97,
+            "ttft_ms": 44.0,
+            "itl_ms": 19.2
+          },
+          "qa": {
+            "acceptance_length": 2.44,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 576,
+            "acceptance_at_pos": [0.67, 0.40, 0.24, 0.13],
+            "throughput_tps": 730,
+            "speedup": 1.81,
+            "ttft_ms": 45.5,
+            "itl_ms": 21.1
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve Qwen/Qwen3-8B --speculative-config '{\"method\": \"mtp\"}'",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    },
+    {
+      "model": "RedHatAI/Llama-3.1-8B-Instruct_speculators_eagle3_2l",
+      "target": "meta-llama/Llama-3.1-8B-Instruct",
+      "algorithm": "eagle3",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-05T14:45:00Z",
+      "evaluated_at": "2025-07-12T11:00:00Z",
+      "gpus": "1xh100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 3.12,
+        "acceptance_at_pos": [0.88, 0.58, 0.38, 0.28],
+        "num_drafts": 800,
+        "throughput_tps": 847,
+        "speedup": 2.1,
+        "ttft_ms": 42.1,
+        "itl_ms": 18.3,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 3.04,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 816,
+            "acceptance_at_pos": [0.86, 0.56, 0.36, 0.26],
+            "throughput_tps": 912,
+            "speedup": 2.26,
+            "ttft_ms": 42.1,
+            "itl_ms": 16.8
+          },
+          "qa": {
+            "acceptance_length": 3.20,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 880,
+            "acceptance_at_pos": [0.90, 0.60, 0.40, 0.30],
+            "throughput_tps": 834,
+            "speedup": 2.07,
+            "ttft_ms": 41.8,
+            "itl_ms": 17.9
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve meta-llama/Llama-3.1-8B-Instruct --speculative-model RedHatAI/Llama-3.1-8B-Instruct_speculators_eagle3_2l",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    },
+    {
+      "model": "RedHatAI/Llama-3.1-8B-Instruct_speculators_dflash_2l",
+      "target": "meta-llama/Llama-3.1-8B-Instruct",
+      "algorithm": "dflash",
+      "num_speculative_tokens": 5,
+      "hf_last_modified": "2025-07-06T10:20:00Z",
+      "evaluated_at": "2025-07-13T08:15:00Z",
+      "gpus": "1xh100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 3.42,
+        "acceptance_at_pos": [0.89, 0.62, 0.42, 0.30, 0.19],
+        "num_drafts": 800,
+        "throughput_tps": 792,
+        "speedup": 1.96,
+        "ttft_ms": 38.4,
+        "itl_ms": 19.7,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 3.34,
+            "num_drafts": 400,
+            "num_draft_tokens": 2000,
+            "num_accepted_tokens": 936,
+            "acceptance_at_pos": [0.87, 0.60, 0.40, 0.28, 0.19],
+            "throughput_tps": 830,
+            "speedup": 2.06,
+            "ttft_ms": 38.0,
+            "itl_ms": 18.5
+          },
+          "qa": {
+            "acceptance_length": 3.50,
+            "num_drafts": 400,
+            "num_draft_tokens": 2000,
+            "num_accepted_tokens": 1000,
+            "acceptance_at_pos": [0.91, 0.64, 0.44, 0.32, 0.19],
+            "throughput_tps": 760,
+            "speedup": 1.88,
+            "ttft_ms": 39.2,
+            "itl_ms": 20.8
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve meta-llama/Llama-3.1-8B-Instruct --speculative-model RedHatAI/Llama-3.1-8B-Instruct_speculators_dflash_2l",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    },
+    {
+      "model": "RedHatAI/Llama-3.1-8B-Instruct_speculators_peagle_2l",
+      "target": "meta-llama/Llama-3.1-8B-Instruct",
+      "algorithm": "peagle",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-07T16:30:00Z",
+      "evaluated_at": "2025-07-14T10:45:00Z",
+      "gpus": "1xh100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.89,
+        "acceptance_at_pos": [0.80, 0.52, 0.34, 0.23],
+        "num_drafts": 800,
+        "throughput_tps": 823,
+        "speedup": 2.04,
+        "ttft_ms": 40.5,
+        "itl_ms": 18.9,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.83,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 732,
+            "acceptance_at_pos": [0.78, 0.50, 0.32, 0.23],
+            "throughput_tps": 870,
+            "speedup": 2.16,
+            "ttft_ms": 40.1,
+            "itl_ms": 17.6
+          },
+          "qa": {
+            "acceptance_length": 2.95,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 780,
+            "acceptance_at_pos": [0.82, 0.54, 0.36, 0.23],
+            "throughput_tps": 790,
+            "speedup": 1.96,
+            "ttft_ms": 39.7,
+            "itl_ms": 18.4
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve meta-llama/Llama-3.1-8B-Instruct --speculative-model RedHatAI/Llama-3.1-8B-Instruct_speculators_peagle_2l",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    },
+    {
+      "model": "RedHatAI/Llama-3.1-8B-Instruct_speculators_mtp",
+      "target": "meta-llama/Llama-3.1-8B-Instruct",
+      "algorithm": "mtp",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-08T09:00:00Z",
+      "evaluated_at": "2025-07-14T15:30:00Z",
+      "gpus": "1xh100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.95,
+        "acceptance_at_pos": [0.82, 0.54, 0.35, 0.24],
+        "num_drafts": 800,
+        "throughput_tps": 805,
+        "speedup": 1.99,
+        "ttft_ms": 43.2,
+        "itl_ms": 19.5,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.89,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 756,
+            "acceptance_at_pos": [0.80, 0.52, 0.34, 0.23],
+            "throughput_tps": 840,
+            "speedup": 2.09,
+            "ttft_ms": 42.8,
+            "itl_ms": 18.4
+          },
+          "qa": {
+            "acceptance_length": 3.01,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 804,
+            "acceptance_at_pos": [0.84, 0.56, 0.36, 0.25],
+            "throughput_tps": 775,
+            "speedup": 1.92,
+            "ttft_ms": 44.2,
+            "itl_ms": 20.1
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve meta-llama/Llama-3.1-8B-Instruct --speculative-config '{\"method\": \"mtp\"}'",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    },
+    {
+      "model": "RedHatAI/Llama-3.3-70B-Instruct_speculators_eagle3_2l",
+      "target": "meta-llama/Llama-3.3-70B-Instruct",
+      "algorithm": "eagle3",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-10T12:00:00Z",
+      "evaluated_at": "2025-07-16T09:00:00Z",
+      "gpus": "4xh100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 3.05,
+        "acceptance_at_pos": [0.86, 0.56, 0.37, 0.26],
+        "num_drafts": 800,
+        "throughput_tps": 312,
+        "speedup": 2.34,
+        "ttft_ms": 156.2,
+        "itl_ms": 32.4,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.97,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 788,
+            "acceptance_at_pos": [0.84, 0.54, 0.35, 0.24],
+            "throughput_tps": 340,
+            "speedup": 2.55,
+            "ttft_ms": 154.1,
+            "itl_ms": 30.2
+          },
+          "qa": {
+            "acceptance_length": 3.13,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 852,
+            "acceptance_at_pos": [0.88, 0.58, 0.39, 0.28],
+            "throughput_tps": 295,
+            "speedup": 2.21,
+            "ttft_ms": 158.7,
+            "itl_ms": 34.1
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve meta-llama/Llama-3.3-70B-Instruct --speculative-model RedHatAI/Llama-3.3-70B-Instruct_speculators_eagle3_2l -tp 4",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    },
+    {
+      "model": "RedHatAI/Llama-3.3-70B-Instruct_speculators_dflash_2l",
+      "target": "meta-llama/Llama-3.3-70B-Instruct",
+      "algorithm": "dflash",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-11T08:30:00Z",
+      "evaluated_at": "2025-07-17T11:20:00Z",
+      "gpus": "4xh100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.78,
+        "acceptance_at_pos": [0.78, 0.48, 0.31, 0.21],
+        "num_drafts": 800,
+        "throughput_tps": 278,
+        "speedup": 2.08,
+        "ttft_ms": 148.5,
+        "itl_ms": 35.1,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.72,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 688,
+            "acceptance_at_pos": [0.76, 0.46, 0.30, 0.20],
+            "throughput_tps": 302,
+            "speedup": 2.26,
+            "ttft_ms": 147.0,
+            "itl_ms": 33.5
+          },
+          "qa": {
+            "acceptance_length": 2.84,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 736,
+            "acceptance_at_pos": [0.80, 0.50, 0.32, 0.22],
+            "throughput_tps": 261,
+            "speedup": 1.95,
+            "ttft_ms": 150.4,
+            "itl_ms": 36.8
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve meta-llama/Llama-3.3-70B-Instruct --speculative-model RedHatAI/Llama-3.3-70B-Instruct_speculators_dflash_2l -tp 4",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    },
+    {
+      "model": "RedHatAI/Mistral-7B-Instruct-v0.3_speculators_eagle3_2l",
+      "target": "mistralai/Mistral-7B-Instruct-v0.3",
+      "algorithm": "eagle3",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-12T15:00:00Z",
+      "evaluated_at": "2025-07-18T14:00:00Z",
+      "gpus": "1xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.63,
+        "acceptance_at_pos": [0.74, 0.44, 0.27, 0.18],
+        "num_drafts": 800,
+        "throughput_tps": 856,
+        "speedup": 2.13,
+        "ttft_ms": 41.2,
+        "itl_ms": 18.1,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.57,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 628,
+            "acceptance_at_pos": [0.72, 0.42, 0.25, 0.18],
+            "throughput_tps": 898,
+            "speedup": 2.23,
+            "ttft_ms": 40.8,
+            "itl_ms": 17.0
+          },
+          "qa": {
+            "acceptance_length": 2.69,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 676,
+            "acceptance_at_pos": [0.76, 0.46, 0.29, 0.18],
+            "throughput_tps": 825,
+            "speedup": 2.05,
+            "ttft_ms": 42.0,
+            "itl_ms": 18.9
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve mistralai/Mistral-7B-Instruct-v0.3 --speculative-model RedHatAI/Mistral-7B-Instruct-v0.3_speculators_eagle3_2l",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    },
+    {
+      "model": "RedHatAI/Mistral-7B-Instruct-v0.3_speculators_peagle_2l",
+      "target": "mistralai/Mistral-7B-Instruct-v0.3",
+      "algorithm": "peagle",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-13T10:45:00Z",
+      "evaluated_at": "2025-07-19T08:30:00Z",
+      "gpus": "1xa100",
+      "status": "failed",
+      "metrics": null,
+      "error": "CUDA out of memory: tried to allocate 2.4 GiB",
+      "deploy": null
+    },
+    {
+      "model": "RedHatAI/Mistral-7B-Instruct-v0.3_speculators_mtp",
+      "target": "mistralai/Mistral-7B-Instruct-v0.3",
+      "algorithm": "mtp",
+      "num_speculative_tokens": 3,
+      "hf_last_modified": "2025-07-14T07:20:00Z",
+      "evaluated_at": "2025-07-20T10:15:00Z",
+      "gpus": "1xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 2.45,
+        "acceptance_at_pos": [0.72, 0.45, 0.28],
+        "num_drafts": 800,
+        "throughput_tps": 745,
+        "speedup": 1.85,
+        "ttft_ms": 45.1,
+        "itl_ms": 20.8,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.39,
+            "num_drafts": 400,
+            "num_draft_tokens": 1200,
+            "num_accepted_tokens": 556,
+            "acceptance_at_pos": [0.70, 0.43, 0.26],
+            "throughput_tps": 778,
+            "speedup": 1.93,
+            "ttft_ms": 44.5,
+            "itl_ms": 19.7
+          },
+          "qa": {
+            "acceptance_length": 2.51,
+            "num_drafts": 400,
+            "num_draft_tokens": 1200,
+            "num_accepted_tokens": 604,
+            "acceptance_at_pos": [0.74, 0.47, 0.30],
+            "throughput_tps": 718,
+            "speedup": 1.78,
+            "ttft_ms": 46.2,
+            "itl_ms": 21.5
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve mistralai/Mistral-7B-Instruct-v0.3 --speculative-config '{\"method\": \"mtp\"}'",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    },
+    {
+      "model": "RedHatAI/Qwen3-32B_speculators_eagle3_2l",
+      "target": "Qwen/Qwen3-32B",
+      "algorithm": "eagle3",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-16T13:00:00Z",
+      "evaluated_at": "2025-07-22T09:45:00Z",
+      "gpus": "4xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 3.28,
+        "acceptance_at_pos": [0.90, 0.60, 0.44, 0.34],
+        "num_drafts": 800,
+        "throughput_tps": 478,
+        "speedup": 2.38,
+        "ttft_ms": 98.4,
+        "itl_ms": 24.6,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 3.20,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 880,
+            "acceptance_at_pos": [0.88, 0.58, 0.42, 0.32],
+            "throughput_tps": 510,
+            "speedup": 2.54,
+            "ttft_ms": 97.2,
+            "itl_ms": 23.1
+          },
+          "qa": {
+            "acceptance_length": 3.36,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 944,
+            "acceptance_at_pos": [0.92, 0.62, 0.46, 0.36],
+            "throughput_tps": 452,
+            "speedup": 2.25,
+            "ttft_ms": 99.8,
+            "itl_ms": 25.8
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve Qwen/Qwen3-32B --speculative-model RedHatAI/Qwen3-32B_speculators_eagle3_2l -tp 4",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    },
+    {
+      "model": "RedHatAI/Qwen3-32B_speculators_peagle_2l",
+      "target": "Qwen/Qwen3-32B",
+      "algorithm": "peagle",
+      "num_speculative_tokens": 4,
+      "hf_last_modified": "2025-07-17T11:30:00Z",
+      "evaluated_at": "2025-07-23T14:00:00Z",
+      "gpus": "4xa100",
+      "status": "ok",
+      "metrics": {
+        "acceptance_length": 3.01,
+        "acceptance_at_pos": [0.84, 0.55, 0.36, 0.26],
+        "num_drafts": 800,
+        "throughput_tps": 445,
+        "speedup": 2.21,
+        "ttft_ms": 102.1,
+        "itl_ms": 26.3,
+        "subsets": {
+          "HumanEval": {
+            "acceptance_length": 2.95,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 780,
+            "acceptance_at_pos": [0.82, 0.53, 0.35, 0.25],
+            "throughput_tps": 472,
+            "speedup": 2.35,
+            "ttft_ms": 101.0,
+            "itl_ms": 25.1
+          },
+          "qa": {
+            "acceptance_length": 3.07,
+            "num_drafts": 400,
+            "num_draft_tokens": 1600,
+            "num_accepted_tokens": 828,
+            "acceptance_at_pos": [0.86, 0.57, 0.37, 0.27],
+            "throughput_tps": 425,
+            "speedup": 2.11,
+            "ttft_ms": 103.5,
+            "itl_ms": 27.2
+          }
+        }
+      },
+      "error": null,
+      "deploy": {
+        "command": "vllm serve Qwen/Qwen3-32B --speculative-model RedHatAI/Qwen3-32B_speculators_peagle_2l -tp 4",
+        "recipe_source": "",
+        "recipe_model": ""
+      }
+    }
+  ]
+}
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script>
+"use strict";
+
+/* ============================================================
+   Constants
+   ============================================================ */
+
+var DATA_URL = "../site/sample-results.json";
+
+var ALGO_COLORS = {
+  eagle3: { chart: "#3b82f6" },
+  dflash: { chart: "#d97706" },
+  peagle: { chart: "#a855f7" },
+  mtp:    { chart: "#059669" },
+};
+var ALGO_ORDER = ["eagle3", "dflash", "peagle", "mtp"];
+
+/* ============================================================
+   State
+   ============================================================ */
+
+var state = {
+  raw: [],
+  filtered: [],
+  sortKey: "speedup",
+  sortDir: "desc",
+  filters: { target: "all", algorithm: "all", text: "" },
+  expandedModel: null,
+  deployOpen: null,
+  targetTabs: [],
+  uniqueAlgorithms: [],
+  hasThroughput: false,
+};
+
+/* ============================================================
+   Data Helpers
+   ============================================================ */
+
+function shortName(modelId) {
+  if (!modelId || typeof modelId !== "string") return modelId || "—";
+  var idx = modelId.indexOf("/");
+  return idx >= 0 ? modelId.substring(idx + 1) : modelId;
+}
+
+function targetFamily(targetId) {
+  if (!targetId || typeof targetId !== "string") return targetId || "—";
+  var idx = targetId.indexOf("/");
+  return idx >= 0 ? targetId.substring(idx + 1) : targetId;
+}
+
+function safeNum(val) {
+  if (val === null || val === undefined) return null;
+  var n = Number(val);
+  return isNaN(n) || n === 0 ? null : n;
+}
+
+function compareNumeric(av, bv, sign) {
+  var aMiss = av === null || av === undefined || (typeof av === "number" && isNaN(av));
+  var bMiss = bv === null || bv === undefined || (typeof bv === "number" && isNaN(bv));
+  if (aMiss && bMiss) return 0;
+  if (aMiss) return 1;
+  if (bMiss) return -1;
+  return (av - bv) * sign;
+}
+
+function fetchJson(url) {
+  return fetch(url + "?t=" + Date.now(), { cache: "no-store" }).then(function (res) {
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  });
+}
+
+/* Fallback for file:// sharing: sample data embedded in a JSON script tag above */
+function embeddedData() {
+  var el = document.getElementById("embedded-results");
+  if (!el) return null;
+  try { return JSON.parse(el.textContent); } catch (e) { return null; }
+}
+
+function processData(models) {
+  var targets = {}, algos = {}, anyThroughput = false;
+  models.forEach(function (m) {
+    if (m.target) targets[m.target] = true;
+    if (m.algorithm) algos[m.algorithm] = true;
+    m._shortName = shortName(m.model);
+    m._targetFamily = targetFamily(m.target);
+    m._acceptanceLength = m.metrics && typeof m.metrics.acceptance_length === "number"
+      ? m.metrics.acceptance_length : null;
+    m._throughput = safeNum(m.metrics && m.metrics.throughput_tps);
+    m._speedup = safeNum(m.metrics && m.metrics.speedup);
+    m._ttft = safeNum(m.metrics && m.metrics.ttft_ms);
+    m._itl = safeNum(m.metrics && m.metrics.itl_ms);
+    if (m._throughput !== null) anyThroughput = true;
+  });
+  return {
+    uniqueTargets: Object.keys(targets).sort(),
+    uniqueAlgorithms: Object.keys(algos).sort(),
+    hasThroughput: anyThroughput
+  };
+}
+
+function buildTargetTabs(models) {
+  var counts = {}, familyToFull = {};
+  models.forEach(function (m) {
+    var fam = m._targetFamily;
+    if (!fam) return;
+    counts[fam] = (counts[fam] || 0) + 1;
+    if (!familyToFull[fam]) familyToFull[fam] = m.target;
+  });
+  return Object.keys(counts).sort().map(function (fam) {
+    return { family: fam, fullTarget: familyToFull[fam], count: counts[fam] };
+  });
+}
+
+function filterModels(models, filters) {
+  return models.filter(function (m) {
+    if (filters.target !== "all" && m._targetFamily !== filters.target) return false;
+    if (filters.algorithm !== "all" && m.algorithm !== filters.algorithm) return false;
+    if (filters.text) {
+      var q = filters.text.toLowerCase();
+      var match = [m.model, m.target, m.algorithm].some(function (v) {
+        return v && String(v).toLowerCase().indexOf(q) >= 0;
+      });
+      if (!match) return false;
+    }
+    return true;
+  });
+}
+
+function sortModels(models, sortKey, sortDir) {
+  models.sort(function (a, b) {
+    var af = a.status === "failed" ? 1 : 0;
+    var bf = b.status === "failed" ? 1 : 0;
+    if (af !== bf) return af - bf;
+    var sign = sortDir === "asc" ? 1 : -1;
+    var av, bv, cmp;
+    if (sortKey === "model") {
+      cmp = String(a.model || "").localeCompare(String(b.model || "")) * sign;
+    } else if (sortKey === "gpus") {
+      cmp = String(a.gpus || "").localeCompare(String(b.gpus || "")) * sign;
+    } else if (sortKey === "throughput_tps") {
+      cmp = compareNumeric(a._throughput, b._throughput, sign);
+    } else if (sortKey === "speedup") {
+      cmp = compareNumeric(a._speedup, b._speedup, sign);
+    } else if (sortKey === "acceptance_length") {
+      cmp = compareNumeric(a._acceptanceLength, b._acceptanceLength, sign);
+    } else if (sortKey === "ttft_ms") {
+      cmp = compareNumeric(a._ttft, b._ttft, sign);
+    } else if (sortKey === "itl_ms") {
+      cmp = compareNumeric(a._itl, b._itl, sign);
+    } else { cmp = 0; }
+    if (cmp === 0) cmp = String(a.model || "").localeCompare(String(b.model || ""));
+    return cmp;
+  });
+  return models;
+}
+
+/* ============================================================
+   DOM Helpers
+   ============================================================ */
+
+function h(tag, attrs, children) {
+  var el = document.createElement(tag);
+  if (attrs) {
+    Object.keys(attrs).forEach(function (k) {
+      if (k === "className") el.className = attrs[k];
+      else if (k === "innerHTML") el.innerHTML = attrs[k];
+      else if (k.slice(0, 2) === "on" && typeof attrs[k] === "function")
+        el.addEventListener(k.slice(2).toLowerCase(), attrs[k]);
+      else if (k === "style" && typeof attrs[k] === "object") Object.assign(el.style, attrs[k]);
+      else el.setAttribute(k, attrs[k]);
+    });
+  }
+  if (children != null) {
+    if (typeof children === "string" || typeof children === "number") el.textContent = String(children);
+    else if (Array.isArray(children)) children.forEach(function (c) { if (c) el.appendChild(c); });
+    else if (children instanceof HTMLElement) el.appendChild(children);
+  }
+  return el;
+}
+
+function escapeHtml(str) {
+  var div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function fmtDate(iso) {
+  var t = Date.parse(iso || "");
+  if (isNaN(t)) return iso || "—";
+  return new Date(t).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
+function spdClass(val) {
+  if (val === null || val === undefined) return "";
+  if (val >= 2) return "spd-excellent";
+  if (val >= 1.5) return "spd-good";
+  if (val >= 1.2) return "spd-moderate";
+  return "spd-low";
+}
+
+function algoClass(algo) {
+  var map = { eagle3: "algo-eagle3", dflash: "algo-dflash", peagle: "algo-peagle", mtp: "algo-mtp" };
+  return map[(algo || "").toLowerCase()] || "algo-other";
+}
+
+function formatHardware(gpus) {
+  if (!gpus) return "—";
+  var match = gpus.match(/^(\d+)x(.+)$/i);
+  if (match) return match[1] + "x " + match[2].toUpperCase();
+  return gpus;
+}
+
+function copyToClipboard(text, btn) {
+  navigator.clipboard.writeText(text).then(function () {
+    var orig = btn.textContent;
+    btn.textContent = "Copied!";
+    btn.style.color = "var(--green)";
+    setTimeout(function () { btn.textContent = orig; btn.style.color = ""; }, 1200);
+  });
+}
+
+/* ============================================================
+   Sparkline (table column)
+   ============================================================ */
+
+function sparkline(values) {
+  var wrap = h("span", { className: "spark" });
+  if (!Array.isArray(values) || values.length === 0) {
+    wrap.appendChild(h("span", null, "—"));
+    return wrap;
+  }
+  values.forEach(function (v) {
+    var bar = h("span", {
+      className: "spark-bar",
+      style: { height: Math.max(2, Math.round((Number(v) || 0) * 18)) + "px" },
+      title: (Number(v) || 0).toFixed(2)
+    });
+    wrap.appendChild(bar);
+  });
+  return wrap;
+}
+
+/* ============================================================
+   Acceptance-at-position bars (Metrics detail tab)
+   ============================================================ */
+
+function renderAcceptanceStrip(m) {
+  var values = m.metrics && m.metrics.acceptance_at_pos;
+  if (!Array.isArray(values) || values.length === 0) return null;
+  var strip = h("div", { className: "accept-strip" });
+  strip.appendChild(h("div", { className: "accept-strip-title" }, "Acceptance rate by draft position"));
+  var bars = h("div", { className: "accept-bars" });
+  values.forEach(function (v, i) {
+    var n = Number(v) || 0;
+    var col = h("div", { className: "accept-col" });
+    col.appendChild(h("span", { className: "aval" }, Math.round(n * 100) + "%"));
+    col.appendChild(h("span", {
+      className: "abar2",
+      style: { height: Math.max(3, Math.round(n * 44)) + "px" }
+    }));
+    col.appendChild(h("span", { className: "apos" }, "pos " + (i + 1)));
+    bars.appendChild(col);
+  });
+  strip.appendChild(bars);
+  return strip;
+}
+
+/* ============================================================
+   Deploy Panel
+   ============================================================ */
+
+function renderDeployPanel(m) {
+  var panel = h("div", { className: "deploy-panel" });
+  panel.appendChild(h("div", { className: "deploy-panel-title" }, "Deploy with vLLM"));
+  var cmd = m.deploy && m.deploy.command;
+  if (!cmd) {
+    panel.appendChild(h("div", { className: "deploy-pending" }, "Command pending evaluation"));
+    return panel;
+  }
+  var codeWrap = h("div", { className: "code-block" });
+  var parts = cmd.split(" ");
+  var htmlParts = [];
+  for (var i = 0; i < parts.length; i++) {
+    var part = parts[i];
+    if (i <= 1) htmlParts.push('<span class="cmd">' + escapeHtml(part) + '</span>');
+    else if (part.charAt(0) === "-") htmlParts.push('<span class="flag">' + escapeHtml(part) + '</span>');
+    else htmlParts.push('<span class="val">' + escapeHtml(part) + '</span>');
+  }
+  codeWrap.innerHTML = htmlParts.join(" ");
+  var copyBtn = h("button", {
+    className: "copy-btn",
+    onClick: function (e) { e.stopPropagation(); copyToClipboard(cmd, copyBtn); }
+  }, "Copy");
+  codeWrap.appendChild(copyBtn);
+  panel.appendChild(codeWrap);
+
+  var meta = h("div", { className: "deploy-meta" });
+  meta.appendChild(h("span", null, formatHardware(m.gpus) + " evaluated"));
+  meta.appendChild(h("span", null, "vLLM auto-detects algorithm & target"));
+  panel.appendChild(meta);
+  return panel;
+}
+
+/* ============================================================
+   Subset Table
+   ============================================================ */
+
+function renderSubsetTable(m) {
+  var subsets = m.metrics && m.metrics.subsets;
+  if (!subsets || Object.keys(subsets).length === 0) {
+    return h("div", { className: "deploy-pending" }, "No per-subset data available");
+  }
+  var subs = Object.keys(subsets).map(function (k) {
+    return Object.assign({ name: k }, subsets[k]);
+  });
+  var vals = { throughput: [], acceptance_length: [], ttft_ms: [], itl_ms: [] };
+  subs.forEach(function (s) {
+    if (s.throughput_tps != null) vals.throughput.push(s.throughput_tps);
+    if (s.acceptance_length != null) vals.acceptance_length.push(s.acceptance_length);
+    if (s.ttft_ms != null) vals.ttft_ms.push(s.ttft_ms);
+    if (s.itl_ms != null) vals.itl_ms.push(s.itl_ms);
+  });
+  var bestTp = vals.throughput.length ? Math.max.apply(null, vals.throughput) : null;
+  var bestAl = vals.acceptance_length.length ? Math.max.apply(null, vals.acceptance_length) : null;
+  var bestTtft = vals.ttft_ms.length ? Math.min.apply(null, vals.ttft_ms) : null;
+  var bestItl = vals.itl_ms.length ? Math.min.apply(null, vals.itl_ms) : null;
+
+  var table = h("table", { className: "subset-tbl" });
+  var thead = h("thead");
+  var hr = h("tr");
+  ["Subset", "Throughput", "Accept. Len", "TTFT", "ITL"].forEach(function (t, i) {
+    hr.appendChild(h("th", { className: i > 0 ? "num" : "" }, t));
+  });
+  thead.appendChild(hr);
+  table.appendChild(thead);
+
+  var tbody = h("tbody");
+  subs.forEach(function (s) {
+    var tr = h("tr");
+    tr.appendChild(h("td", { className: "subset-name" }, s.name));
+    var tdTp = h("td", { className: "num" + (s.throughput_tps != null && s.throughput_tps === bestTp ? " best" : "") });
+    if (s.throughput_tps != null)
+      tdTp.innerHTML = Math.round(s.throughput_tps).toLocaleString() + '<span class="unit">tok/s</span>';
+    else tdTp.textContent = "—";
+    tr.appendChild(tdTp);
+
+    tr.appendChild(h("td", {
+      className: "num" + (s.acceptance_length != null && s.acceptance_length === bestAl ? " best" : "")
+    }, s.acceptance_length != null ? s.acceptance_length.toFixed(2) : "—"));
+
+    var tdTtft = h("td", { className: "num" + (s.ttft_ms != null && s.ttft_ms === bestTtft ? " best" : "") });
+    if (s.ttft_ms != null) tdTtft.innerHTML = s.ttft_ms.toFixed(1) + '<span class="unit">ms</span>';
+    else tdTtft.textContent = "—";
+    tr.appendChild(tdTtft);
+
+    var tdItl = h("td", { className: "num" + (s.itl_ms != null && s.itl_ms === bestItl ? " best" : "") });
+    if (s.itl_ms != null) tdItl.innerHTML = s.itl_ms.toFixed(1) + '<span class="unit">ms</span>';
+    else tdItl.textContent = "—";
+    tr.appendChild(tdItl);
+
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  return table;
+}
+
+/* ============================================================
+   Charts (ECharts)
+   ============================================================ */
+
+var _chartInstances = {};
+
+function initChart(containerId) {
+  if (_chartInstances[containerId]) {
+    _chartInstances[containerId].dispose();
+    delete _chartInstances[containerId];
+  }
+  var dom = document.getElementById(containerId);
+  if (!dom) return null;
+  var chart = echarts.init(dom, "dark");
+  _chartInstances[containerId] = chart;
+  return chart;
+}
+
+function disposeChartsByPrefix(prefix) {
+  Object.keys(_chartInstances).forEach(function (key) {
+    if (key.indexOf(prefix) === 0 && _chartInstances[key]) {
+      _chartInstances[key].dispose();
+      delete _chartInstances[key];
+    }
+  });
+}
+
+function renderAlgoChart(containerId, models, algoColors, algoOrder, hasThroughput) {
+  var chart = initChart(containerId);
+  if (!chart) return;
+
+  var targetAlgo = {};
+  models.forEach(function (m) {
+    var t = m._targetFamily, a = m.algorithm;
+    var v = hasThroughput ? (m._throughput || 0) : (m._acceptanceLength || 0);
+    if (!t || !a || !v) return;
+    if (!targetAlgo[t]) targetAlgo[t] = {};
+    if (!targetAlgo[t][a] || v > targetAlgo[t][a]) targetAlgo[t][a] = v;
+  });
+
+  var targets = Object.keys(targetAlgo).sort();
+  var presentAlgos = algoOrder.filter(function (a) {
+    return targets.some(function (t) { return targetAlgo[t][a] !== undefined; });
+  });
+
+  if (targets.length === 0 || presentAlgos.length === 0) {
+    var dom = document.getElementById(containerId);
+    if (dom) dom.innerHTML = '<div class="placeholder">No data available for chart.</div>';
+    return;
+  }
+
+  var yAxisName = hasThroughput ? "Throughput (tok/s)" : "Acceptance Length";
+
+  chart.setOption({
+    backgroundColor: "transparent",
+    textStyle: { fontFamily: "Inter, -apple-system, sans-serif" },
+    grid: { left: 10, right: 10, top: 40, bottom: 50, containLabel: true },
+    legend: {
+      data: presentAlgos,
+      bottom: 0,
+      textStyle: { color: "#94a3b8", fontSize: 12 }
+    },
+    xAxis: {
+      type: "category",
+      data: targets,
+      axisLabel: { color: "#f8fafc", fontSize: 12, rotate: targets.length > 5 ? 20 : 0 },
+      axisLine: { lineStyle: { color: "rgba(255,255,255,0.1)" } },
+      axisTick: { show: false },
+    },
+    yAxis: {
+      type: "value",
+      name: yAxisName,
+      nameTextStyle: { color: "#94a3b8" },
+      splitLine: { lineStyle: { color: "rgba(255,255,255,0.06)" } },
+      axisLabel: { color: "#94a3b8" },
+    },
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
+      backgroundColor: "#0f172a",
+      borderColor: "rgba(255,255,255,0.1)",
+      textStyle: { color: "#f8fafc", fontSize: 12 },
+    },
+    series: presentAlgos.map(function (algo) {
+      return {
+        name: algo,
+        type: "bar",
+        data: targets.map(function (t) { return targetAlgo[t][algo] || null; }),
+        itemStyle: {
+          color: (algoColors[algo] || {}).chart || "#94a3b8",
+          borderRadius: [6, 6, 0, 0],
+        },
+        barGap: "15%",
+        label: {
+          show: true,
+          position: "top",
+          color: "#f8fafc",
+          fontSize: 10,
+          formatter: function (p) {
+            if (!p.value) return "";
+            return hasThroughput ? Math.round(p.value).toLocaleString() : p.value.toFixed(2);
+          },
+        },
+      };
+    }),
+  });
+}
+
+/* ============================================================
+   Render Stats
+   ============================================================ */
+
+function renderStats(filtered, hasThroughput) {
+  var ok = filtered.filter(function (m) { return m.status === "ok"; });
+  var el = document.getElementById("stat-models");
+  if (el) el.textContent = ok.length;
+
+  var bestEl = document.getElementById("stat-best");
+  var bestLabelEl = document.getElementById("stat-best-label");
+  var bestModelEl = document.getElementById("stat-best-model");
+
+  if (hasThroughput) {
+    var best = null, bestModel = null;
+    ok.forEach(function (m) {
+      if (m._speedup !== null && (best === null || m._speedup > best)) { best = m._speedup; bestModel = m; }
+    });
+    if (bestEl) bestEl.textContent = best !== null ? best.toFixed(1) + "x" : "—";
+    if (bestLabelEl) bestLabelEl.textContent = "Best Speedup";
+    if (bestModelEl) bestModelEl.textContent = bestModel ? bestModel._shortName : "";
+  } else {
+    var bestAcc = null, bestAccModel = null;
+    ok.forEach(function (m) {
+      if (m._acceptanceLength !== null && (bestAcc === null || m._acceptanceLength > bestAcc)) {
+        bestAcc = m._acceptanceLength; bestAccModel = m;
+      }
+    });
+    if (bestEl) bestEl.textContent = bestAcc !== null ? bestAcc.toFixed(2) : "—";
+    if (bestLabelEl) bestLabelEl.textContent = "Best Accept. Len";
+    if (bestModelEl) bestModelEl.textContent = bestAccModel ? bestAccModel._shortName : "";
+  }
+
+  var algos = {};
+  ok.forEach(function (m) { if (m.algorithm) algos[m.algorithm] = true; });
+  var algosEl = document.getElementById("stat-algos");
+  if (algosEl) algosEl.textContent = Object.keys(algos).length;
+}
+
+/* ============================================================
+   Render Target Tabs
+   ============================================================ */
+
+function renderTargetTabs(tabs, activeTarget, totalCount, onSelect) {
+  var container = document.getElementById("target-tabs");
+  if (!container) return;
+  container.textContent = "";
+
+  var allTab = h("button", {
+    className: "target-tab" + (activeTarget === "all" ? " active" : ""),
+    onClick: function () { onSelect("all"); }
+  });
+  allTab.innerHTML = 'All Targets <span class="tab-count">' + totalCount + '</span>';
+  container.appendChild(allTab);
+
+  tabs.forEach(function (t) {
+    var tab = h("button", {
+      className: "target-tab" + (activeTarget === t.family ? " active" : ""),
+      onClick: function () { onSelect(t.family); }
+    });
+    tab.innerHTML = escapeHtml(t.family) + ' <span class="tab-count">' + t.count + '</span>';
+    container.appendChild(tab);
+  });
+}
+
+/* ============================================================
+   Render Table
+   ============================================================ */
+
+function renderTable(filtered, opts) {
+  disposeChartsByPrefix("detail-");
+  var tbody = document.getElementById("models-tbody");
+  if (!tbody) return;
+  tbody.textContent = "";
+
+  var placeholder = document.getElementById("placeholder");
+  var table = document.getElementById("models-table");
+
+  if (filtered.length === 0) {
+    if (table) table.hidden = true;
+    if (placeholder) {
+      placeholder.hidden = false;
+      placeholder.textContent = opts.rawCount === 0
+        ? "No evaluation results yet. Check back after the next eval run."
+        : "No models match the current filters.";
+    }
+    return;
+  }
+  if (table) table.hidden = false;
+  if (placeholder) placeholder.hidden = true;
+
+  // Sort arrows
+  var ths = document.querySelectorAll("#models-table thead th");
+  ths.forEach(function (th) {
+    var old = th.querySelector(".sort-arrow");
+    if (old) old.remove();
+    if (th.dataset.key === opts.sortKey) {
+      th.appendChild(h("span", { className: "sort-arrow" }, opts.sortDir === "asc" ? "▲" : "▼"));
+    }
+  });
+
+  for (var i = 0; i < filtered.length; i++) {
+    var m = filtered[i];
+    var isExpanded = opts.expandedModel === m.model;
+    var isDeployOpen = opts.deployOpen === m.model && !isExpanded;
+
+    var classes = "model-row";
+    if (m.status === "failed") classes += " failed-row";
+    if (isExpanded) classes += " expanded";
+
+    var tr = h("tr", { className: classes });
+    (function (model) {
+      tr.addEventListener("click", function (e) {
+        if (e.target.closest(".deploy-btn")) return;
+        opts.onToggleExpand(model.model);
+      });
+    })(m);
+
+    // 1. Drafter
+    var tdDrafter = h("td");
+    var nameWrap = h("div", { className: "model-name" });
+    var topRow = h("span");
+    var link = h("a", {
+      href: "https://huggingface.co/" + encodeURI(m.model),
+      target: "_blank",
+      rel: "noopener noreferrer",
+      onClick: function (e) { e.stopPropagation(); }
+    }, m._shortName || "—");
+    topRow.appendChild(link);
+    topRow.appendChild(document.createTextNode(" "));
+    topRow.appendChild(h("span", { className: "algo-badge " + algoClass(m.algorithm) }, m.algorithm || "other"));
+    nameWrap.appendChild(topRow);
+    if (opts.activeTarget === "all" && m._targetFamily) {
+      nameWrap.appendChild(h("span", { className: "model-target" }, m._targetFamily));
+    }
+    tdDrafter.appendChild(nameWrap);
+    tr.appendChild(tdDrafter);
+
+    // 2. Throughput
+    var tdTp = h("td", { className: "right" });
+    if (m._throughput !== null) {
+      tdTp.appendChild(h("span", { className: "metric-val" }, Math.round(m._throughput).toLocaleString()));
+      tdTp.appendChild(h("span", { className: "metric-unit" }, "tok/s"));
+    } else { tdTp.textContent = "—"; }
+    tr.appendChild(tdTp);
+
+    // 3. Speedup
+    var tdSpd = h("td", { className: "right" });
+    if (m._speedup !== null) {
+      tdSpd.appendChild(h("span", { className: "spd-badge " + spdClass(m._speedup) }, m._speedup.toFixed(1) + "x"));
+    } else { tdSpd.textContent = "—"; }
+    tr.appendChild(tdSpd);
+
+    // 4. Accept. Len
+    var tdAcc = h("td", { className: "right" });
+    tdAcc.appendChild(h("span", { className: "metric-val" }, m._acceptanceLength !== null ? m._acceptanceLength.toFixed(2) : "—"));
+    tr.appendChild(tdAcc);
+
+    // 5. TTFT
+    var tdTtft = h("td", { className: "right" });
+    if (m._ttft !== null) {
+      tdTtft.appendChild(h("span", { className: "metric-val" }, m._ttft.toFixed(1)));
+      tdTtft.appendChild(h("span", { className: "metric-unit" }, "ms"));
+    } else { tdTtft.textContent = "—"; }
+    tr.appendChild(tdTtft);
+
+    // 6. ITL
+    var tdItl = h("td", { className: "right" });
+    if (m._itl !== null) {
+      tdItl.appendChild(h("span", { className: "metric-val" }, m._itl.toFixed(1)));
+      tdItl.appendChild(h("span", { className: "metric-unit" }, "ms"));
+    } else { tdItl.textContent = "—"; }
+    tr.appendChild(tdItl);
+
+    // 7. Accept@pos
+    var tdSpark = h("td");
+    tdSpark.appendChild(sparkline(m.metrics && m.metrics.acceptance_at_pos));
+    tr.appendChild(tdSpark);
+
+    // 8. Hardware
+    var tdHw = h("td");
+    tdHw.appendChild(h("span", { className: "hw-chip" }, formatHardware(m.gpus)));
+    tr.appendChild(tdHw);
+
+    // 9. Deploy button
+    var tdDeploy = h("td");
+    var dBtn = h("button", { className: "deploy-btn" });
+    dBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg> Deploy';
+    (function (model) {
+      dBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        opts.onToggleDeploy(model.model);
+      });
+    })(m);
+    tdDeploy.appendChild(dBtn);
+    tr.appendChild(tdDeploy);
+
+    tbody.appendChild(tr);
+
+    // Expanded detail row
+    if (isExpanded) {
+      var detailTr = h("tr", { className: "detail-row" });
+      var detailTd = h("td", { colSpan: "9" });
+      var inner = h("div", { className: "detail-inner" });
+
+      var dtabs = h("div", { className: "detail-tabs" });
+      var metricsTab = h("button", { className: "detail-tab active" }, "Metrics");
+      var deployTab = h("button", { className: "detail-tab" }, "Deploy");
+      dtabs.appendChild(metricsTab);
+      dtabs.appendChild(deployTab);
+      inner.appendChild(dtabs);
+
+      var metricsPane = h("div", { style: { padding: "16px 0" } });
+      if (m.error) {
+        metricsPane.appendChild(h("div", {
+          style: { color: "var(--red)", marginBottom: "12px", fontWeight: "600" }
+        }, "Error: " + m.error));
+      }
+      var acceptStrip = renderAcceptanceStrip(m);
+      if (acceptStrip) metricsPane.appendChild(acceptStrip);
+      metricsPane.appendChild(renderSubsetTable(m));
+      inner.appendChild(metricsPane);
+
+      var deployPane = h("div", { style: { display: "none", padding: "16px 0" } });
+      deployPane.appendChild(renderDeployPanel(m));
+      inner.appendChild(deployPane);
+
+      metricsTab.addEventListener("click", function (e) {
+        e.stopPropagation();
+        metricsTab.classList.add("active"); deployTab.classList.remove("active");
+        metricsPane.style.display = ""; deployPane.style.display = "none";
+      });
+      deployTab.addEventListener("click", function (e) {
+        e.stopPropagation();
+        deployTab.classList.add("active"); metricsTab.classList.remove("active");
+        deployPane.style.display = ""; metricsPane.style.display = "none";
+      });
+
+      detailTd.appendChild(inner);
+      detailTr.appendChild(detailTd);
+      tbody.appendChild(detailTr);
+    }
+
+    // Standalone deploy row
+    if (isDeployOpen) {
+      var dpTr = h("tr", { className: "deploy-row" });
+      var dpTd = h("td", { colSpan: "9" });
+      dpTd.appendChild(renderDeployPanel(m));
+      dpTr.appendChild(dpTd);
+      tbody.appendChild(dpTr);
+    }
+  }
+}
+
+/* ============================================================
+   Render Chart
+   ============================================================ */
+
+function renderChart(filtered, hasThroughput) {
+  var ok = filtered.filter(function (m) { return m.status === "ok"; });
+  var descEl = document.getElementById("chart-desc");
+  if (ok.length === 0) {
+    var dom = document.getElementById("chart-algo-compare");
+    if (dom) dom.innerHTML = '<div class="placeholder">No data matches the current filters.</div>';
+    if (descEl) descEl.textContent = "";
+    return;
+  }
+  if (descEl) {
+    descEl.textContent = hasThroughput
+      ? "Best throughput (tok/s) per algorithm on each target model"
+      : "Best acceptance length per algorithm on each target model";
+  }
+  renderAlgoChart("chart-algo-compare", ok, ALGO_COLORS, ALGO_ORDER, hasThroughput);
+}
+
+/* ============================================================
+   Full Render
+   ============================================================ */
+
+function renderAll() {
+  renderStats(state.filtered, state.hasThroughput);
+
+  renderTargetTabs(state.targetTabs, state.filters.target, state.raw.length, function (target) {
+    state.filters.target = target;
+    onFilterChange();
+  });
+
+  renderTable(state.filtered, {
+    hasThroughput: state.hasThroughput,
+    expandedModel: state.expandedModel,
+    deployOpen: state.deployOpen,
+    activeTarget: state.filters.target,
+    sortKey: state.sortKey,
+    sortDir: state.sortDir,
+    rawCount: state.raw.length,
+    onToggleExpand: function (model) {
+      state.expandedModel = state.expandedModel === model ? null : model;
+      renderAll();
+    },
+    onToggleDeploy: function (model) {
+      state.deployOpen = state.deployOpen === model ? null : model;
+      renderAll();
+    }
+  });
+
+  renderChart(state.filtered, state.hasThroughput);
+}
+
+/* ============================================================
+   Filter & Sort Wiring
+   ============================================================ */
+
+function onFilterChange() {
+  state.filtered = filterModels(state.raw, state.filters);
+  sortModels(state.filtered, state.sortKey, state.sortDir);
+  renderAll();
+}
+
+function populateFilters() {
+  var algoSel = document.getElementById("filter-algorithm");
+  if (algoSel) {
+    state.uniqueAlgorithms.forEach(function (a) {
+      var opt = document.createElement("option");
+      opt.value = a;
+      opt.textContent = a;
+      algoSel.appendChild(opt);
+    });
+  }
+}
+
+function setupFilterListeners() {
+  var algoSel = document.getElementById("filter-algorithm");
+  if (algoSel) {
+    algoSel.addEventListener("change", function (e) {
+      state.filters.algorithm = e.target.value;
+      onFilterChange();
+    });
+  }
+  var textInput = document.getElementById("filter-text");
+  if (textInput) {
+    textInput.addEventListener("input", function (e) {
+      state.filters.text = e.target.value.trim();
+      onFilterChange();
+    });
+  }
+}
+
+function setupSortListeners() {
+  var ths = document.querySelectorAll("#models-table thead th");
+  ths.forEach(function (th) {
+    th.addEventListener("click", function () {
+      var key = th.dataset.key;
+      if (!key) return;
+      if (state.sortKey === key) {
+        state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+      } else {
+        state.sortKey = key;
+        state.sortDir = (key === "model" || key === "gpus") ? "asc" : "desc";
+      }
+      sortModels(state.filtered, state.sortKey, state.sortDir);
+      renderAll();
+    });
+  });
+}
+
+/* ============================================================
+   Scroll-triggered Animations
+   ============================================================ */
+
+function setupAnimations() {
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    document.querySelectorAll(".reveal").forEach(function (el) { el.classList.add("visible"); });
+    return;
+  }
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) entry.target.classList.add("visible");
+    });
+  }, { threshold: 0.08, rootMargin: "0px 0px -40px 0px" });
+
+  document.querySelectorAll(".reveal").forEach(function (el) {
+    observer.observe(el);
+  });
+}
+
+/* ============================================================
+   Window Resize
+   ============================================================ */
+
+window.addEventListener("resize", function () {
+  Object.keys(_chartInstances).forEach(function (key) {
+    if (_chartInstances[key]) {
+      try { _chartInstances[key].resize(); } catch (e) {}
+    }
+  });
+});
+
+/* ============================================================
+   Init
+   ============================================================ */
+
+function init() {
+  setupFilterListeners();
+  setupSortListeners();
+  setupAnimations();
+
+  fetchJson(DATA_URL).catch(function () { return embeddedData(); }).then(function (data) {
+    if (!data || !Array.isArray(data.models) || data.models.length === 0) {
+      throw new Error("empty");
+    }
+
+    state.raw = data.models;
+    var info = processData(state.raw);
+    state.uniqueAlgorithms = info.uniqueAlgorithms;
+    state.hasThroughput = info.hasThroughput;
+    state.targetTabs = buildTargetTabs(state.raw);
+    populateFilters();
+
+    var lastUpdatedEl = document.getElementById("last-updated");
+    if (lastUpdatedEl) lastUpdatedEl.textContent = "— Last updated " + fmtDate(data.updated_at);
+
+    state.sortKey = info.hasThroughput ? "speedup" : "acceptance_length";
+    state.sortDir = "desc";
+    state.filtered = filterModels(state.raw, state.filters);
+    sortModels(state.filtered, state.sortKey, state.sortDir);
+    renderAll();
+  }).catch(function () {
+    var ph = document.getElementById("placeholder");
+    if (ph) {
+      ph.hidden = false;
+      ph.textContent = "Could not load evaluation results. Serve this prototype over HTTP (e.g. python3 -m http.server) so the data file can be fetched.";
+    }
+    var tbl = document.getElementById("models-table");
+    if (tbl) tbl.hidden = true;
+  });
+}
+
+document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>
