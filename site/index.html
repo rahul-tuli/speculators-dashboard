@@ -326,6 +326,158 @@ button { font-family: var(--sans); }
 }
 
 /* ============================================================
+   How it works — speculative decoding diagram
+   (ported from the Blueprint prototype's Fig. 00)
+   ============================================================ */
+.how-section { padding: 2rem 0 0; }
+.how-shell {
+  background: rgba(15,23,42,0.55);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-shell);
+  padding: 2.75rem 2.5rem 2rem;
+}
+.how-header {
+  text-align: center;
+  max-width: 44rem;
+  margin: 0 auto 2.25rem;
+}
+.how-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 0.875rem;
+}
+.how-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+  margin-bottom: 0.875rem;
+}
+.how-caption {
+  font-size: 1rem;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+
+.spec-diagram { width: 100%; height: auto; display: block; }
+.spec-diagram text {
+  font-family: var(--mono);
+  text-transform: uppercase;
+}
+.dia-label   { fill: var(--text-2); font-size: 9.5px; letter-spacing: 0.14em; }
+.dia-sub     { fill: var(--text-3); font-size: 8px; letter-spacing: 0.12em; }
+.dia-anno    { fill: var(--text-3); font-size: 8px; letter-spacing: 0.16em; }
+.dia-node    { fill: rgba(15,23,42,0.85); stroke: rgba(48,162,255,0.55); stroke-width: 1; }
+.dia-node--target { stroke: var(--blue); stroke-width: 1.25; }
+.dia-edge    { stroke: rgba(48,162,255,0.35); stroke-width: 1; stroke-dasharray: 3 4; fill: none; }
+.dia-edge--accept { stroke: rgba(34,197,94,0.45); }
+.dia-leader  { stroke: rgba(148,163,184,0.3); stroke-width: 1; stroke-dasharray: 2 3; }
+
+/* Verification pulse ring on target node */
+.dia-pulse {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 1.5;
+  opacity: 0;
+  transform-origin: 496px 96px;
+  animation: verify-pulse 6s ease-out infinite;
+}
+@keyframes verify-pulse {
+  0%, 38%   { opacity: 0; transform: scale(1); }
+  44%       { opacity: 0.7; transform: scale(1); }
+  62%, 100% { opacity: 0; transform: scale(1.35); }
+}
+
+/* Draft token chips: drafter → target, verdict at ~60% */
+.chip rect {
+  rx: 3;
+  stroke-width: 1;
+  fill: rgba(48,162,255,0.14);
+  stroke: var(--blue);
+}
+.chip text { fill: var(--blue); font-size: 9px; font-weight: 700; }
+
+.chip { animation: chip-fly 6s linear infinite; opacity: 0; }
+.chip rect { animation: chip-ok-rect 6s linear infinite; }
+.chip text { animation: chip-ok-text 6s linear infinite; }
+.chip-2 rect, .chip-2 text,
+.chip-2 { animation-delay: 0.12s; }
+.chip-3 rect, .chip-3 text,
+.chip-3 { animation-delay: 0.24s; }
+.chip-4 rect, .chip-4 text,
+.chip-4 { animation-delay: 0.36s; }
+
+@keyframes chip-fly {
+  0%        { transform: translate(0, 0);        opacity: 0; }
+  6%        { opacity: 1; }
+  52%       { transform: translate(236px, 0);    opacity: 1; }
+  56%, 100% { transform: translate(236px, 0);    opacity: 1; }
+}
+/* Chips 1,2 accepted → blue-green; chip 3 rejected → red, drop & fade.
+   Chip 4 is also rejected: verification is prefix-sequential, so every
+   token beyond the first rejection is discarded. */
+.chip-1 rect, .chip-2 rect { animation-name: chip-ok-rect; }
+.chip-1 text, .chip-2 text { animation-name: chip-ok-text; }
+.chip-1, .chip-2 { animation-name: chip-fly; }
+.chip-3, .chip-4 { animation-name: chip-fly-reject; }
+
+@keyframes chip-ok-rect {
+  0%, 51%   { fill: rgba(48,162,255,0.14); stroke: var(--blue); }
+  56%, 92%  { fill: rgba(34,197,94,0.16); stroke: var(--green); }
+  100%      { fill: rgba(34,197,94,0.16); stroke: var(--green); }
+}
+@keyframes chip-ok-text {
+  0%, 51%   { fill: var(--blue); }
+  56%, 100% { fill: var(--green); }
+}
+@keyframes chip-fly-reject {
+  0%        { transform: translate(0, 0);        opacity: 0; }
+  6%        { opacity: 1; }
+  52%       { transform: translate(236px, 0);    opacity: 1; }
+  56%       { transform: translate(236px, 0);    opacity: 1; }
+  74%       { transform: translate(236px, 26px); opacity: 0.85; }
+  88%, 100% { transform: translate(236px, 26px); opacity: 0; }
+}
+.chip-3 rect, .chip-4 rect { animation-name: chip-rej-rect; }
+.chip-3 text, .chip-4 text { animation-name: chip-rej-text; }
+@keyframes chip-rej-rect {
+  0%, 51%   { fill: rgba(48,162,255,0.14); stroke: var(--blue); }
+  56%, 100% { fill: rgba(239,68,68,0.12); stroke: var(--red); }
+}
+@keyframes chip-rej-text {
+  0%, 51%   { fill: var(--blue); }
+  56%, 100% { fill: var(--red); }
+}
+
+/* Accepted output tokens continue right of the target */
+.out-token rect { fill: rgba(34,197,94,0.14); stroke: var(--green); rx: 3; }
+.out-token text { fill: var(--green); font-size: 9px; font-weight: 700; }
+.out-token { animation: out-token 6s linear infinite; opacity: 0; }
+.out-token-2 { animation-delay: 0.18s; }
+@keyframes out-token {
+  0%, 54%   { transform: translate(0, 0);     opacity: 0; }
+  60%       { opacity: 1; }
+  86%       { transform: translate(56px, 0);  opacity: 1; }
+  94%, 100% { transform: translate(56px, 0);  opacity: 0; }
+}
+
+/* Draft-loop feedback dash: drafter keeps proposing */
+.dia-loop-dot {
+  fill: var(--blue);
+  opacity: 0;
+  animation: loop-dot 6s ease-in-out infinite;
+}
+@keyframes loop-dot {
+  0%, 62%  { opacity: 0; transform: translateX(0); }
+  68%      { opacity: 0.9; }
+  88%      { opacity: 0.9; transform: translateX(-212px); }
+  94%, 100%{ opacity: 0; transform: translateX(-212px); }
+}
+
+/* ============================================================
    Container
    ============================================================ */
 .container {
@@ -822,6 +974,7 @@ tr.deploy-row > td {
   .site-nav { padding: 1.25rem 1.5rem; }
   .nav-links { gap: 1.25rem; }
   .container { padding: 0 1.25rem; }
+  .how-shell { padding: 2rem 1.25rem 1.5rem; }
   .stats-section { padding: 4rem 0 3.5rem; }
   .stat { padding: 0 1.5rem; }
   .stat-val { font-size: 2.75rem; }
@@ -840,6 +993,13 @@ tr.deploy-row > td {
   .aurora-blob { animation: none !important; }
   .hero-content { animation: none; }
   .fade-in-up { opacity: 1; transform: none; transition: none; }
+  .chip, .chip rect, .chip text,
+  .out-token, .dia-pulse, .dia-loop-dot {
+    animation: none !important;
+  }
+  .chip { opacity: 0; }
+  .chip-static { opacity: 1 !important; }
+  .out-token { opacity: 0; }
   *, *::before, *::after { transition-duration: 0.01ms !important; }
 }
   </style>
@@ -911,6 +1071,92 @@ tr.deploy-row > td {
   </header>
 
   <main>
+
+    <!-- ============================================================
+         How it works — speculative decoding diagram
+         ============================================================ -->
+    <section class="how-section fade-in-up">
+      <div class="container">
+        <div class="how-shell">
+          <div class="how-header">
+            <div class="how-eyebrow">How it works</div>
+            <h2 class="how-title">Speculative decoding, in one forward pass</h2>
+            <p class="how-caption">
+              A small drafter proposes &gamma; tokens; the target model verifies them all in a single
+              forward pass. Accepted tokens commit &mdash; the first mismatch and every token after
+              it are discarded, and the drafter re-drafts from there.
+            </p>
+          </div>
+
+          <!-- Speculative decoding diagram:
+               drafter proposes γ tokens → target verifies in parallel →
+               accepted tokens commit (green); the first rejected token and
+               every token after it are discarded (red) -->
+          <svg class="spec-diagram" viewBox="0 0 640 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of speculative decoding: a drafter model proposes tokens, the target model verifies them, accepted tokens are kept, and the first rejected token plus all tokens after it are discarded.">
+            <!-- edges -->
+            <path class="dia-edge" d="M 176 96 H 244" />
+            <path class="dia-edge dia-edge--accept" d="M 560 96 H 600" />
+            <path class="dia-edge" d="M 496 148 C 496 196, 148 196, 148 148" />
+
+            <!-- drafter node -->
+            <g>
+              <rect class="dia-node" x="64" y="64" width="112" height="64" rx="6" />
+              <text class="dia-label" x="120" y="92" text-anchor="middle">Drafter</text>
+              <text class="dia-sub" x="120" y="108" text-anchor="middle">EAGLE-3 · 2L</text>
+            </g>
+
+            <!-- target node -->
+            <g>
+              <rect class="dia-node dia-node--target" x="404" y="52" width="184" height="88" rx="6" />
+              <text class="dia-label" x="496" y="90" text-anchor="middle">Target Model</text>
+              <text class="dia-sub" x="496" y="106" text-anchor="middle">PARALLEL VERIFY · γ=4</text>
+              <circle class="dia-pulse" cx="496" cy="96" r="58" />
+            </g>
+
+            <!-- draft token chips (drafter → target) -->
+            <g class="chip chip-1 chip-static">
+              <rect x="182" y="82" width="28" height="28" />
+              <text x="196" y="99" text-anchor="middle">t₁</text>
+            </g>
+            <g class="chip chip-2 chip-static">
+              <rect x="214" y="82" width="28" height="28" />
+              <text x="228" y="99" text-anchor="middle">t₂</text>
+            </g>
+            <g class="chip chip-3 chip-static">
+              <rect x="246" y="82" width="28" height="28" />
+              <text x="260" y="99" text-anchor="middle">t₃</text>
+            </g>
+            <g class="chip chip-4 chip-static">
+              <rect x="278" y="82" width="28" height="28" />
+              <text x="292" y="99" text-anchor="middle">t₄</text>
+            </g>
+
+            <!-- accepted output tokens (target → output) -->
+            <g class="out-token out-token-1">
+              <rect x="566" y="82" width="28" height="28" />
+              <text x="580" y="99" text-anchor="middle">t₁</text>
+            </g>
+            <g class="out-token out-token-2">
+              <rect x="566" y="82" width="28" height="28" />
+              <text x="580" y="99" text-anchor="middle">t₂</text>
+            </g>
+
+            <!-- feedback loop dot -->
+            <circle class="dia-loop-dot" cx="496" cy="172" r="3" />
+
+            <!-- annotations with leader lines -->
+            <path class="dia-leader" d="M 260 74 V 40 H 244" />
+            <text class="dia-anno" x="238" y="44" text-anchor="end">γ draft tokens</text>
+
+            <path class="dia-leader" d="M 496 22 V 46" />
+            <text class="dia-anno" x="496" y="14" text-anchor="middle">1 forward pass</text>
+
+            <path class="dia-leader" d="M 322 176 H 392 V 150" />
+            <text class="dia-anno" x="314" y="180" text-anchor="end">re-draft</text>
+          </svg>
+        </div>
+      </div>
+    </section>
 
     <!-- ============================================================
          Stats — oversized numbers, hairline dividers
