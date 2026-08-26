@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-25T14:25:22Z",
+  "updated_at": "2026-08-26T13:24:03Z",
   "baselines": {
     "Qwen/Qwen3-8B": {
       "1xh100": 3254.24
@@ -580,6 +580,26 @@
       },
       "params": 1022037632,
       "architecture": "Eagle3Speculator"
+    },
+    {
+      "model": "RedHatAI/Qwen3-8B-speculator.peagle",
+      "target": "qwen/qwen3-8b",
+      "algorithm": "peagle",
+      "num_speculative_tokens": 5,
+      "hf_last_modified": "2026-06-09T16:59:48.000Z",
+      "evaluated_at": "2026-08-26T13:24:03Z",
+      "gpus": "1xa100",
+      "status": "failed",
+      "metrics": null,
+      "error": "vLLM 0.26.1rc1 SpeculativeConfig rejects method 'peagle' (unsupported in this build; valid: eagle/eagle3/dflash/dspark/mtp)",
+      "deploy": {
+        "command": "",
+        "recipe_source": "",
+        "recipe_model": ""
+      },
+      "params": 2091962368,
+      "architecture": "PEagleDraftModel",
+      "base_model": "Qwen/Qwen3-8B"
     },
     {
       "model": "RedHatAI/gpt-oss-20b-speculator.eagle3",
