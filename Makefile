@@ -2,7 +2,11 @@ PYTHON ?= python3
 VENV := .venv
 BIN := $(VENV)/bin
 
-.PHONY: install dev eval deploy quality style
+.PHONY: install dev eval deploy quality style setup
+
+# Cluster-machine setup: preflight checks + install the eval scheduler.
+setup:
+	./pipeline/setup.sh
 
 install:
 	$(PYTHON) -m venv $(VENV)

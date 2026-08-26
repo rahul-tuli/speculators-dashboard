@@ -7,7 +7,14 @@ Nothing here requires a GPU locally.
 ## 0. Prerequisites
 
 ```bash
+make setup    # verifies all of the below AND installs the eval scheduler
+```
+
+or by hand:
+
+```bash
 oc whoami                                    # must be logged in (else: oc login <cluster-url>)
+gh auth status                               # cron_eval.sh files/updates eval issues
 command -v flock python3 curl                # required tools
 export DEVENV_DIR=~/projects/devenv          # path to the devenv checkout (adjust)
 ls "$DEVENV_DIR/launch.sh"
@@ -33,7 +40,7 @@ ls results/pending/                          # per-model entries incl. GPU sizin
 
 ```bash
 python3 pipeline/discover.py                 # regenerate pending entries
-./pipeline/run_eval.sh results/pending/qwen3-8b-speculator-eagle3.json
+./pipeline/refresh.sh single --entry results/pending/qwen3-8b-speculator-eagle3.json
 ```
 
 Watch for: pod `devenv-$USER-eval` becomes Ready → vLLM serves the speculator →
@@ -58,24 +65,28 @@ python3 -m http.server 8000
 
 ```bash
 ./pipeline/refresh.sh                        # logs to stdout; flock-guarded
-tail -f logs/refresh.log                     # when running via cron
+tail -f logs/cron.log                        # when running via the scheduler
 ```
 
 Each model takes ~15–45 min (model download + server start + eval). The shared
 HF cache PVC makes re-runs much faster.
 
-## 5. Schedule it (cron, every 6 hours)
+## 5. Schedule it (automated evals)
 
 ```bash
-crontab -l 2>/dev/null; echo '17 */6 * * * cd ~/projects/speculators-dashboard && ./pipeline/refresh.sh >> logs/refresh.log 2>&1'
-# add the last line via: crontab -e
+make setup    # preflight checks + installs the scheduler (systemd user timer,
+              # or a flock-guarded crontab entry where systemd is unavailable)
 ```
+
+The scheduler runs `pipeline/cron_eval.sh` every 30 minutes: it picks up
+GitHub issues labeled `eval:pending` and evaluates them one at a time. See the
+README's **Automation** section for verify/watch commands and edge-case notes.
 
 ## 6. Useful knobs
 
 ```bash
-EVAL_TIMEOUT=7200 ./pipeline/run_eval.sh <entry.json>   # longer cap for huge models
-DEVENV_NAMESPACE=machine-learning                        # default namespace
+EVAL_TIMEOUT=7200 ./pipeline/refresh.sh single --entry <entry.json>   # longer cap for huge models
+DEVENV_NAMESPACE=machine-learning                                      # default namespace
 ```
 
 ## 7. Troubleshooting

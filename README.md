@@ -21,10 +21,19 @@ make install   # create .venv and install the pipeline + dev tooling
 make dev       # serve the dashboard at http://localhost:8000
 ```
 
-That's the whole setup — the pipeline is stdlib-only, so there are no runtime
-dependencies to resolve. Running actual evals additionally requires cluster
-access; see **CHEATSHEET.md** for copy-paste commands for the
-cluster-connected machine.
+That's the whole local setup — the pipeline is stdlib-only, so there are no
+runtime dependencies to resolve.
+
+On the cluster-connected machine (where `oc` and the `devenv` checkout live),
+starting automated evals is two commands:
+
+```bash
+git clone https://github.com/rahul-tuli/speculators-dashboard.git && cd speculators-dashboard
+make setup   # preflight checks (oc/gh/devenv) + installs the eval scheduler
+```
+
+`make setup` is idempotent — re-run it any time to re-check or repair the setup.
+See **CHEATSHEET.md** for manual/smoke-test commands.
 
 All common tasks are Makefile targets:
 
@@ -32,6 +41,7 @@ All common tasks are Makefile targets:
 |---|---|
 | `make install` | Create `.venv`, `pip install -e ".[dev]"` |
 | `make dev` | Serve `site/` locally with real `results.json` data |
+| `make setup` | Cluster machine: preflight checks + install the eval scheduler |
 | `make eval` | Full eval cycle for all pending models (needs cluster access) |
 | `make deploy` | Commit and push updated `results.json` + `results/` |
 | `make quality` | Ruff lint + verify all pipeline modules import cleanly |
@@ -48,6 +58,7 @@ pipeline/
   normalize.py          eval output -> results.json entry (idempotent upsert)
   in_pod_eval.sh        runs inside the pod: vllm serve + evaluate.py
   cron_eval.sh          cron entrypoint: picks up eval:pending GitHub issues
+  setup.sh              cluster-machine setup: preflight checks + install scheduler
   speculators-eval.{service,timer}  systemd user units that schedule cron_eval.sh
 site/                   static dashboard (no build step, vanilla JS)
 prototype/              marketing-grade design prototypes
@@ -84,25 +95,11 @@ dashboard; a model is re-evaluated when its HF `lastModified` changes.
 
 ## Automation
 
-On the cluster-connected machine, `pipeline/cron_eval.sh` runs unattended via a
-systemd **user** timer (no root needed): every 30 minutes it picks up
-`eval:pending` GitHub issues and evaluates them one at a time.
-
-```bash
-# repo at ~/projects/speculators-dashboard (CHEATSHEET.md's location)
-mkdir -p ~/.config/systemd/user ~/.config/speculators-dashboard
-cp pipeline/speculators-eval.{service,timer} ~/.config/systemd/user/
-# if the repo lives elsewhere, edit WorkingDirectory in the .service first
-
-# optional: env for the job (gh token, PATH additions) — literal paths only
-cat > ~/.config/speculators-dashboard/env <<'EOF'
-GH_TOKEN=ghp_...
-EOF
-
-systemctl --user daemon-reload
-systemctl --user enable --now speculators-eval.timer
-loginctl enable-linger "$USER"   # keep running with no open session; survives reboots
-```
+On the cluster-connected machine, `pipeline/cron_eval.sh` runs unattended:
+every 30 minutes it picks up `eval:pending` GitHub issues and evaluates them
+one at a time. `make setup` (→ `pipeline/setup.sh`) installs the scheduler —
+a systemd **user** timer where available, a flock-guarded crontab entry
+otherwise — after verifying `oc`, `gh`, `flock`, and the `devenv` checkout.
 
 Verify and watch:
 
@@ -114,9 +111,14 @@ tail -f logs/cron.log            # wrapper log; per-eval logs are logs/eval-<slu
 
 Edge cases are handled by construction: no pending issues → the script logs
 `Found 0 pending issue(s)` and exits; overlapping ticks → systemd never starts a
-second instance of the oneshot service while one is active; reboot → `enable` +
-linger + `Persistent=true` (catches up a missed run). Note `oc login` sessions
-expire — if evals start failing with auth errors, re-login on the machine.
+second instance of the oneshot service while one is active (crontab fallback
+uses `flock`); reboot → `enable` + linger + `Persistent=true` (catches up a
+missed run). Note `oc login` sessions expire — if evals start failing with
+auth errors, re-login on the machine and re-run `make setup`.
+
+The units themselves live in `pipeline/speculators-eval.{service,timer}` for
+reference; `setup.sh` copies them into `~/.config/systemd/user/` with
+`WorkingDirectory` pointed at the actual clone location.
 
 ## Deployment
 
