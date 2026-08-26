@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-26T13:24:03Z",
+  "updated_at": "2026-08-26T15:00:26Z",
   "baselines": {
     "Qwen/Qwen3-8B": {
       "1xh100": 3254.24
@@ -600,6 +600,45 @@
       "params": 2091962368,
       "architecture": "PEagleDraftModel",
       "base_model": "Qwen/Qwen3-8B"
+    },
+    {
+      "model": "RedHatAI/gemma-4-26B-A4B-it-speculator.eagle3",
+      "target": "google/gemma-4-26B-A4B-it",
+      "algorithm": "eagle3",
+      "num_speculative_tokens": 5,
+      "hf_last_modified": "2026-04-14T16:14:29.000Z",
+      "evaluated_at": "2026-08-26T15:00:26Z",
+      "gpus": "1xh100",
+      "status": "failed",
+      "metrics": null,
+      "error": "vLLM cannot load gemma-4 (heterogeneous per-layer config). get_head_size in vllm/transformers_utils/model_arch_config_convertor.py:608 calls getattr(hf_text_config,'head_dim',0), which raises transformers AmbiguousGlobalPerLayerAttributeError for gemma-4's per-layer head_dim. --hf-overrides allow_global_per_layer_attribute_access sets the flag on the top config, not hf_text_config, so it does not help. gemma-4 unsupported by current vLLM build.",
+      "deploy": {
+        "command": "CUDA_VISIBLE_DEVICES=7 vllm serve google/gemma-4-26B-A4B-it --tensor-parallel-size 1 --enable-auto-tool-choice --tool-call-parser gemma4 --chat-template examples/tool_chat_template_gemma4.jinja --reasoning-parser gemma4 --speculative-config '{\"model\": \"RedHatAI/gemma-4-26B-A4B-it-speculator.eagle3\", \"method\": \"eagle3\", \"num_speculative_tokens\": 5}' --port 8005",
+        "recipe_source": "https://huggingface.co/RedHatAI/gemma-4-26B-A4B-it-speculator.eagle3",
+        "recipe_model": "google/gemma-4-26B-A4B-it"
+      },
+      "params": 927918336,
+      "architecture": "Eagle3DraftModel"
+    },
+    {
+      "model": "RedHatAI/gemma-4-31B-it-speculator.dspark",
+      "target": "google/gemma-4-31B-it",
+      "algorithm": "dspark",
+      "num_speculative_tokens": 5,
+      "hf_last_modified": "2026-07-21T20:04:03.000Z",
+      "evaluated_at": "2026-08-26T15:00:26Z",
+      "gpus": "1xh100",
+      "status": "failed",
+      "metrics": null,
+      "error": "vLLM cannot load gemma-4 (heterogeneous per-layer config). get_head_size in vllm/transformers_utils/model_arch_config_convertor.py:608 calls getattr(hf_text_config,'head_dim',0), which raises transformers AmbiguousGlobalPerLayerAttributeError for gemma-4's per-layer head_dim. --hf-overrides allow_global_per_layer_attribute_access sets the flag on the top config, not hf_text_config, so it does not help. gemma-4 unsupported by current vLLM build.",
+      "deploy": {
+        "command": "CUDA_VISIBLE_DEVICES=6 vllm serve google/gemma-4-31B-it --tensor-parallel-size 1 --enable-auto-tool-choice --tool-call-parser gemma4 --chat-template examples/tool_chat_template_gemma4.jinja --reasoning-parser gemma4 --speculative-config '{\"model\": \"RedHatAI/gemma-4-31B-it-speculator.dspark\", \"method\": \"dspark\", \"num_speculative_tokens\": 5}' --port 8004",
+        "recipe_source": "https://huggingface.co/RedHatAI/gemma-4-31B-it-speculator.dspark",
+        "recipe_model": "google/gemma-4-31B-it"
+      },
+      "params": 4196178177,
+      "architecture": "DSparkDraftModel",
+      "base_model": "google/gemma-4-31B-it"
     },
     {
       "model": "RedHatAI/gpt-oss-20b-speculator.eagle3",
