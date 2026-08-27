@@ -311,20 +311,6 @@ button { font-family: var(--sans); }
   color: var(--text-3);
   font-family: var(--mono);
 }
-.pill--sample {
-  display: inline-block;
-  padding: 0.125rem 0.625rem;
-  border-radius: 999px;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  background: rgba(48,162,255,0.12);
-  color: var(--blue);
-  margin-left: 0.75rem;
-  font-family: var(--sans);
-}
-
 /* ============================================================
    How it works — speculative decoding diagram
    (ported from the Blueprint prototype's Fig. 00)
@@ -1065,7 +1051,6 @@ tr.deploy-row > td {
       </div>
       <div class="hero-meta">
         <span id="last-updated">Last updated: &mdash;</span>
-        <span id="sample-pill" class="pill--sample" hidden>Sample Data</span>
       </div>
     </div>
   </header>
@@ -1262,7 +1247,6 @@ tr.deploy-row > td {
    ============================================================ */
 
 var DATA_URL = "./results.json";
-var SAMPLE_URL = "./sample-results.json";
 
 var ALGO_COLORS = {
   eagle3: { chart: "#3b82f6" },
@@ -2123,12 +2107,6 @@ function init() {
   setupAnimations();
 
   loadData(DATA_URL).then(function (data) {
-    if (data) return { data: data, isSample: false };
-    return loadData(SAMPLE_URL).then(function (sample) {
-      return { data: sample, isSample: true };
-    });
-  }).then(function (result) {
-    var data = result.data, isSample = result.isSample;
     if (!data || !Array.isArray(data.models)) {
       var ph = document.getElementById("placeholder");
       if (ph) { ph.hidden = false; ph.textContent = "Could not load evaluation results."; }
@@ -2136,9 +2114,6 @@ function init() {
       if (chartDom) chartDom.innerHTML = '<div class="placeholder">No data available for chart.</div>';
       return;
     }
-
-    var samplePill = document.getElementById("sample-pill");
-    if (samplePill) samplePill.hidden = !isSample;
 
     state.raw = data.models;
     var info = processData(state.raw);
