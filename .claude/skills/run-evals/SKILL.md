@@ -33,5 +33,6 @@ Run the full eval backlog and monitor it through. Evals run one model at a time,
 
 ## Notes
 
+- This is the **cluster/pod flow** (devenv, `oc exec`). When already on a GPU server and running an eval by hand against local GPUs, use the `run-evals-manual` skill instead.
 - This runs the **collection backlog** (`results/pending/`). The issue-driven flow (`eval:pending` GitHub issues) belongs to the scheduler installed by `make setup` — if that timer is live it is already working the issue queue, and both flows share the single eval pod name `devenv-$USER-eval`, so they serialize rather than collide.
 - Machine reboots kill the run — it is a foreground process, not the timer. Re-run `./pipeline/refresh.sh`; already-evaluated models are skipped by `discover.py`.
