@@ -8,9 +8,9 @@ Work the eval-issue queue on the machine you are sitting on, keeping **every GPU
 ## Steps
 
 1. **Load machine config.** Read `local/eval-manual.env` (repo root; `local/` is gitignored, so this is per-machine). It holds:
-   - `VLLM_VENV` — venv that provides `vllm serve`
-   - `GUIDELLM_VENV` — venv whose python runs the guidellm-based eval harness
-   - `SPECULATORS_DIR` — speculators checkout containing `scripts/evaluate/evaluate.py`
+   - `VLLM_VENV` — venv that provides `vllm serve` (on this machine: `/workspace/vllm/.venv`)
+   - `GUIDELLM_VENV` — venv whose python runs the guidellm-based eval harness (on this machine: `/workspace/guidellm-venv` with `guidellm==0.7.1`)
+   - `SPECULATORS_DIR` — speculators checkout containing `scripts/evaluate/evaluate.py` (on this machine: `/workspace/speculators`)
 
    For any missing key, ask the user for the path, verify it exists on disk, and append it to the file — recorded once, reused on every future eval. Never guess paths. **Done when**: all three paths are verified to exist.
 
@@ -39,7 +39,7 @@ Work the eval-issue queue on the machine you are sitting on, keeping **every GPU
 5. **Dispatch one runner subagent per model, all in the background.** Each prompt carries verbatim: the adapted deploy command, its `CUDA_VISIBLE_DEVICES`, its `PORT`, `VLLM_VENV`, `GUIDELLM_VENV`, `SPECULATORS_DIR`, model id, raw output dir `results/<slug>/raw/`, log path `logs/eval-manual-<slug>.log`. Instruct every runner to:
    - Redirect **all** command output to its log file — logs never enter its reply.
    - Start `vllm serve` from `VLLM_VENV` in the background with its deploy command; poll `localhost:<its PORT>/health` up to 40 min (model downloads are slow); if the process dies, return the last ~30 log lines.
-   - Run the sweep with the same `CUDA_VISIBLE_DEVICES` and port: `cd $SPECULATORS_DIR/scripts/evaluate && $GUIDELLM_VENV/bin/python evaluate.py --target http://localhost:$PORT/v1 --output-dir <tmpdir> sweep --max-requests 80`.
+   - Run the sweep with the same `CUDA_VISIBLE_DEVICES` and port: `cd $SPECULATORS_DIR/scripts/evaluate && PATH="$GUIDELLM_VENV/bin:$PATH" $GUIDELLM_VENV/bin/python evaluate.py --target http://localhost:$PORT/v1 --output-dir <tmpdir> --max-requests 80 sweep`.
    - Copy the raw output tree into `results/<slug>/raw/` (replacing any existing one), then kill its vLLM server, success or failure.
    - Reply with at most ~20 lines: ok/failed, files that landed in the raw dir, and — on failure only — the last ~30 log lines.
 
@@ -48,7 +48,7 @@ Work the eval-issue queue on the machine you are sitting on, keeping **every GPU
 6. **As each runner completes, publish and close that model — yourself, one at a time.** Git and `results.json` writes are never delegated or parallelized.
    - Success:
      ```bash
-     python3 pipeline/normalize.py --entry logs/eval-entry-<slug>.json --status ok \
+     python3 pipeline/normalize.py eval --entry logs/eval-entry-<slug>.json --status ok \
          --raw-dir results/<slug>/raw \
          --deploy-command "<issue's deployment command, or the command that ran>" \
          --deploy-recipe-source "<source URL if known, else empty>"

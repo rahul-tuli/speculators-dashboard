@@ -70,8 +70,8 @@ echo "=== Running sweep eval (all subsets) ==="
 python /workspace/speculators/scripts/evaluate/evaluate.py \
     --target "http://localhost:${PORT}/v1" \
     --output-dir "$OUT/eval" \
-    sweep \
-    --max-requests 80 > "$OUT/evaluate.log" 2>&1 || {
+    --max-requests 80 \
+    sweep > "$OUT/evaluate.log" 2>&1 || {
         echo "ERROR: evaluate.py failed. Last log lines:"
         tail -30 "$OUT/evaluate.log"
         exit 1

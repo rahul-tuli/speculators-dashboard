@@ -23,8 +23,8 @@ cd /workspace/speculators/scripts/evaluate
 $VLLM_PYTHON evaluate.py \
     --target "http://localhost:${PORT}/v1" \
     --output-dir "$OUT/eval" \
-    sweep \
-    --max-requests 80 2>&1 | tee "$OUT/evaluate.log" || {
+    --max-requests 80 \
+    sweep 2>&1 | tee "$OUT/evaluate.log" || {
         echo "ERROR: evaluate.py failed. Last log lines:"
         tail -30 "$OUT/evaluate.log"
         exit 1
