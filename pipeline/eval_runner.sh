@@ -14,6 +14,8 @@ DEPLOY_CMD=("$@")
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$REPO_ROOT/local/eval-manual.env"
+export PATH="$VLLM_VENV/bin:$PATH"
+export HF_HOME="${HF_HOME:-/data/fast/huggingface}"
 
 LOG_DIR="$REPO_ROOT/logs"
 mkdir -p "$LOG_DIR" "$RAW_DIR"
