@@ -1,0 +1,109 @@
+<!-- PROTOTYPE: throwaway design exploration for the Analysis section chart.
+     Question: does a grouped bar chart read better than the current multi-line
+     chart when comparing algorithms across target models? -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prototype: Analysis grouped bars</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg: #020617; --surface: #0f172a; --text-1: #f8fafc; --text-2: #94a3b8;
+  --text-3: #64748b; --border: rgba(255,255,255,0.1); --blue: #30a2ff;
+  --sans: 'Inter', -apple-system, sans-serif; --mono: 'JetBrains Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text-1); line-height: 1.6; padding: 3rem 2rem; }
+.container { max-width: 72rem; margin: 0 auto; }
+.section-eyebrow { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--blue); margin-bottom: 0.875rem; }
+.section-title { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em; }
+.section-desc { color: var(--text-2); margin-top: 0.875rem; max-width: 40rem; }
+.section-head { margin-bottom: 2.5rem; }
+.chart-shell { border: 1px solid var(--border); border-radius: 1.25rem; background: var(--surface); padding: 1.5rem 1.5rem 1rem; }
+.chart-container { height: 420px; width: 100%; }
+.note { margin-top: 1rem; font-size: 0.8125rem; color: var(--text-3); font-family: var(--mono); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-eyebrow">Analysis</div>
+      <h2 class="section-title">Algorithm Comparison</h2>
+      <p class="section-desc">Best throughput per algorithm on each target model (grouped bars)</p>
+    </div>
+    <div class="chart-shell"><div id="chart" class="chart-container"></div></div>
+    <p class="note">Prototype A: grouped bars. Bars make per-target winners scannable; tradeoff is no trend line across targets.</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script>
+var DATA = [
+  { target: "Llama-3.1-8B-Instruct", algorithm: "eagle3", throughput: 4075 },
+  { target: "Mellum2-12B-A2.5B-Thinking", algorithm: "dflash", throughput: 4061 },
+  { target: "Qwen3-14B", algorithm: "eagle3", throughput: 2164 },
+  { target: "Qwen3-30B-A3B-Instruct-2507", algorithm: "dflash", throughput: 3044 },
+  { target: "Qwen3-30B-A3B", algorithm: "eagle3", throughput: 3166 },
+  { target: "Qwen3-30B-A3B", algorithm: "dflash", throughput: 3195 },
+  { target: "Qwen3-32B", algorithm: "eagle3", throughput: 3408 },
+  { target: "Qwen3-8B", algorithm: "dflash", throughput: 3320 },
+  { target: "Qwen3-8B", algorithm: "eagle3", throughput: 3659 },
+  { target: "Qwen3.6-35B-A3B", algorithm: "dspark", throughput: 3894 },
+  { target: "gemma-4-31B-it", algorithm: "dflash", throughput: 849 },
+  { target: "gemma-4-31B-it", algorithm: "eagle3", throughput: 740 },
+  { target: "gpt-oss-20b", algorithm: "eagle3", throughput: 3104 },
+  { target: "Laguna-XS.2", algorithm: "dflash", throughput: 834 }
+];
+
+var ALGO_COLORS = { eagle3: "#3b82f6", dflash: "#f97316", peagle: "#a855f7", mtp: "#10b981", dspark: "#eab308" };
+var ALGO_ORDER = ["eagle3", "dflash", "dspark", "peagle", "mtp"];
+
+var targets = [];
+DATA.forEach(function (d) { if (targets.indexOf(d.target) < 0) targets.push(d.target); });
+var algos = ALGO_ORDER.filter(function (a) {
+  return DATA.some(function (d) { return d.algorithm === a; });
+});
+
+function bestFor(target, algo) {
+  var best = null;
+  DATA.forEach(function (d) {
+    if (d.target === target && d.algorithm === algo && (best === null || d.throughput > best)) best = d.throughput;
+  });
+  return best;
+}
+
+echarts.init(document.getElementById("chart"), "dark").setOption({
+  backgroundColor: "transparent",
+  textStyle: { fontFamily: "Inter, -apple-system, sans-serif" },
+  grid: { left: 10, right: 16, top: 40, bottom: 60, containLabel: true },
+  legend: { data: algos, bottom: 0, icon: "roundRect", itemWidth: 14, itemHeight: 4, textStyle: { color: "#94a3b8", fontSize: 12 } },
+  xAxis: {
+    type: "category", data: targets,
+    axisLabel: { color: "#94a3b8", fontSize: 11, rotate: 25 },
+    axisLine: { lineStyle: { color: "rgba(255,255,255,0.1)" } }, axisTick: { show: false }
+  },
+  yAxis: {
+    type: "value", name: "Throughput (tok/s)",
+    nameTextStyle: { color: "#64748b", fontSize: 11 },
+    splitLine: { lineStyle: { color: "rgba(255,255,255,0.05)" } },
+    axisLabel: { color: "#64748b", fontFamily: "JetBrains Mono, monospace", fontSize: 11 }
+  },
+  tooltip: {
+    trigger: "axis", axisPointer: { type: "shadow" },
+    backgroundColor: "#0f172a", borderColor: "rgba(255,255,255,0.1)",
+    textStyle: { color: "#f8fafc", fontSize: 12 },
+    valueFormatter: function (v) { return v == null ? "no result" : Math.round(v).toLocaleString() + " tok/s"; }
+  },
+  series: algos.map(function (algo) {
+    return {
+      name: algo, type: "bar", barMaxWidth: 22,
+      itemStyle: { color: ALGO_COLORS[algo], borderRadius: [3, 3, 0, 0] },
+      emphasis: { focus: "series" },
+      data: targets.map(function (t) { return bestFor(t, algo); })
+    };
+  })
+});
+  </script>
+</body>
+</html>

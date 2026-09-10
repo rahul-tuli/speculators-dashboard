@@ -884,6 +884,8 @@ tr.detail-row > td:hover { background: transparent; }
   font-size: 0.8125rem;
   line-height: 1.7;
   overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
   color: var(--text-2);
 }
 .code-block .cmd  { color: var(--blue); font-weight: 500; }
@@ -1061,7 +1063,7 @@ tr.deploy-row > td {
       </h1>
       <p class="hero-subtitle">
         Every speculator in the RedHatAI speculator-models collection, benchmarked against real workloads.
-        Acceptance length, throughput, and latency — measured, compared, and ready to deploy.
+        Acceptance length, throughput, and latency: measured, compared, and ready to deploy.
       </p>
       <div class="hero-links">
         <a href="https://huggingface.co/collections/RedHatAI/speculator-models" target="_blank" rel="noopener" class="btn btn-primary">Browse Models</a>
@@ -1086,7 +1088,7 @@ tr.deploy-row > td {
             <h2 class="how-title">Speculative decoding, in one forward pass</h2>
             <p class="how-caption">
               A small drafter proposes &gamma; tokens; the target model verifies them all in a single
-              forward pass. Accepted tokens commit &mdash; the first mismatch and every token after
+              forward pass. Accepted tokens commit. The first mismatch and every token after
               it are discarded, and the drafter re-drafts from there.
             </p>
           </div>
@@ -1191,7 +1193,7 @@ tr.deploy-row > td {
       <div class="container">
         <div class="section-head">
           <div class="section-eyebrow">Benchmarks</div>
-          <h2 class="section-title">The results, unvarnished.</h2>
+          <h2 class="section-title">The results.</h2>
         </div>
 
         <div class="target-tabs" id="target-tabs"></div>
@@ -1521,6 +1523,45 @@ function sparkline(values) {
    Deploy Panel
    ============================================================ */
 
+/* Split a shell command into tokens, keeping quoted strings intact */
+function tokenizeCommand(cmd) {
+  var tokens = [], cur = "", quote = null;
+  for (var i = 0; i < cmd.length; i++) {
+    var ch = cmd.charAt(i);
+    if (quote) {
+      cur += ch;
+      if (ch === quote) quote = null;
+    } else if (ch === "'" || ch === '"') {
+      quote = ch;
+      cur += ch;
+    } else if (ch === " " || ch === "\t") {
+      if (cur) { tokens.push(cur); cur = ""; }
+    } else {
+      cur += ch;
+    }
+  }
+  if (cur) tokens.push(cur);
+  return tokens;
+}
+
+/* Render a command as multi-line highlighted HTML: one flag group per line */
+function formatCommandHtml(cmd) {
+  var tokens = tokenizeCommand(cmd);
+  var lines = [], line = [];
+  tokens.forEach(function (tok) {
+    if (tok.charAt(0) === "-" && line.length > 0) { lines.push(line); line = []; }
+    line.push(tok);
+  });
+  if (line.length) lines.push(line);
+  return lines.map(function (lineTokens, li) {
+    var html = lineTokens.map(function (tok, ti) {
+      var cls = (li === 0 && ti < 2) ? "cmd" : (tok.charAt(0) === "-" ? "flag" : "val");
+      return '<span class="' + cls + '">' + escapeHtml(tok) + '</span>';
+    }).join(" ");
+    return li < lines.length - 1 ? html + " \\" : html;
+  }).join("\n    ");
+}
+
 function renderDeployPanel(m) {
   var panel = h("div", { className: "deploy-panel" });
   panel.appendChild(h("div", { className: "deploy-panel-title" }, "Deploy with vLLM"));
@@ -1530,15 +1571,7 @@ function renderDeployPanel(m) {
     return panel;
   }
   var codeWrap = h("div", { className: "code-block" });
-  var parts = cmd.split(" ");
-  var htmlParts = [];
-  for (var i = 0; i < parts.length; i++) {
-    var part = parts[i];
-    if (i <= 1) htmlParts.push('<span class="cmd">' + escapeHtml(part) + '</span>');
-    else if (part.charAt(0) === "-") htmlParts.push('<span class="flag">' + escapeHtml(part) + '</span>');
-    else htmlParts.push('<span class="val">' + escapeHtml(part) + '</span>');
-  }
-  codeWrap.innerHTML = htmlParts.join(" ");
+  codeWrap.innerHTML = formatCommandHtml(cmd);
   var copyBtn = h("button", {
     className: "copy-btn",
     onClick: function (e) { e.stopPropagation(); copyToClipboard(cmd, copyBtn); }
@@ -1548,7 +1581,6 @@ function renderDeployPanel(m) {
 
   var meta = h("div", { className: "deploy-meta" });
   meta.appendChild(h("span", null, formatHardware(m.gpus) + " evaluated"));
-  meta.appendChild(h("span", null, "vLLM auto-detects algorithm & target"));
   panel.appendChild(meta);
   return panel;
 }
@@ -2152,7 +2184,9 @@ function init() {
       return;
     }
 
-    state.raw = data.models;
+    state.raw = data.models.filter(function (m) {
+      return m.status === "ok" && m.metrics;
+    });
     var info = processData(state.raw);
     state.uniqueAlgorithms = info.uniqueAlgorithms;
     state.hasThroughput = info.hasThroughput;

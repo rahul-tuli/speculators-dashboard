@@ -1,0 +1,112 @@
+<!-- PROTOTYPE: throwaway design exploration for the Analysis section chart.
+     Question: does a target x algorithm heatmap of acceptance length make
+     coverage gaps and winners clearer than lines or bars? -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prototype: Analysis heatmap</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg: #020617; --surface: #0f172a; --text-1: #f8fafc; --text-2: #94a3b8;
+  --text-3: #64748b; --border: rgba(255,255,255,0.1); --blue: #30a2ff;
+  --sans: 'Inter', -apple-system, sans-serif; --mono: 'JetBrains Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text-1); line-height: 1.6; padding: 3rem 2rem; }
+.container { max-width: 72rem; margin: 0 auto; }
+.section-eyebrow { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--blue); margin-bottom: 0.875rem; }
+.section-title { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em; }
+.section-desc { color: var(--text-2); margin-top: 0.875rem; max-width: 40rem; }
+.section-head { margin-bottom: 2.5rem; }
+.chart-shell { border: 1px solid var(--border); border-radius: 1.25rem; background: var(--surface); padding: 1.5rem 1.5rem 1rem; }
+.chart-container { height: 420px; width: 100%; }
+.note { margin-top: 1rem; font-size: 0.8125rem; color: var(--text-3); font-family: var(--mono); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-eyebrow">Analysis</div>
+      <h2 class="section-title">Coverage Matrix</h2>
+      <p class="section-desc">Best acceptance length for every target x algorithm pair; empty cells show missing evals</p>
+    </div>
+    <div class="chart-shell"><div id="chart" class="chart-container"></div></div>
+    <p class="note">Prototype C: heatmap. Reads as a coverage matrix; tradeoff is it compresses throughput magnitude into color only.</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script>
+var DATA = [
+  { target: "Llama-3.1-8B-Instruct", algorithm: "eagle3", acceptance: 3.03, throughput: 4075 },
+  { target: "Mellum2-12B-A2.5B-Thinking", algorithm: "dflash", acceptance: 2.80, throughput: 4061 },
+  { target: "Qwen3-14B", algorithm: "eagle3", acceptance: 2.40, throughput: 2164 },
+  { target: "Qwen3-30B-A3B-Instruct-2507", algorithm: "dflash", acceptance: 2.83, throughput: 3044 },
+  { target: "Qwen3-30B-A3B", algorithm: "eagle3", acceptance: 3.28, throughput: 3166 },
+  { target: "Qwen3-30B-A3B", algorithm: "dflash", acceptance: 3.01, throughput: 3195 },
+  { target: "Qwen3-32B", algorithm: "eagle3", acceptance: 3.33, throughput: 3408 },
+  { target: "Qwen3-8B", algorithm: "dflash", acceptance: 2.18, throughput: 3320 },
+  { target: "Qwen3-8B", algorithm: "eagle3", acceptance: 2.46, throughput: 3659 },
+  { target: "Qwen3.6-35B-A3B", algorithm: "dspark", acceptance: 3.45, throughput: 3894 },
+  { target: "gemma-4-31B-it", algorithm: "dflash", acceptance: 3.42, throughput: 849 },
+  { target: "gemma-4-31B-it", algorithm: "eagle3", acceptance: 3.05, throughput: 740 },
+  { target: "gpt-oss-20b", algorithm: "eagle3", acceptance: 2.19, throughput: 3104 },
+  { target: "Laguna-XS.2", algorithm: "dflash", acceptance: 2.52, throughput: 834 }
+];
+
+var targets = [], algos = [];
+DATA.forEach(function (d) {
+  if (targets.indexOf(d.target) < 0) targets.push(d.target);
+  if (algos.indexOf(d.algorithm) < 0) algos.push(d.algorithm);
+});
+targets.sort(); algos.sort();
+
+var cells = DATA.map(function (d) {
+  return { value: [algos.indexOf(d.algorithm), targets.indexOf(d.target), d.acceptance], throughput: d.throughput };
+});
+var maxAcc = Math.max.apply(null, DATA.map(function (d) { return d.acceptance; }));
+
+echarts.init(document.getElementById("chart"), "dark").setOption({
+  backgroundColor: "transparent",
+  textStyle: { fontFamily: "Inter, -apple-system, sans-serif" },
+  grid: { left: 10, right: 90, top: 30, bottom: 60, containLabel: true },
+  xAxis: {
+    type: "category", data: algos,
+    axisLabel: { color: "#94a3b8", fontSize: 12 },
+    axisLine: { show: false }, axisTick: { show: false },
+    splitArea: { show: true, areaStyle: { color: ["rgba(255,255,255,0.015)", "transparent"] } }
+  },
+  yAxis: {
+    type: "category", data: targets,
+    axisLabel: { color: "#94a3b8", fontSize: 11, fontFamily: "JetBrains Mono, monospace" },
+    axisLine: { show: false }, axisTick: { show: false }
+  },
+  visualMap: {
+    min: 0, max: maxAcc, calculable: true, orient: "vertical", right: 0, top: "center",
+    inRange: { color: ["#0f172a", "#0b4f8f", "#30a2ff", "#7cc7ff"] },
+    textStyle: { color: "#64748b", fontSize: 11 }
+  },
+  tooltip: {
+    backgroundColor: "#0f172a", borderColor: "rgba(255,255,255,0.1)",
+    textStyle: { color: "#f8fafc", fontSize: 12 },
+    formatter: function (p) {
+      return "<b>" + targets[p.value[1]] + "</b> / " + algos[p.value[0]] + "<br>" +
+        "acceptance: " + p.value[2].toFixed(2) + "<br>" +
+        "throughput: " + p.data.throughput.toLocaleString() + " tok/s";
+    }
+  },
+  series: [{
+    type: "heatmap", data: cells,
+    label: {
+      show: true, color: "#f8fafc", fontSize: 11, fontFamily: "JetBrains Mono, monospace",
+      formatter: function (p) { return p.value[2].toFixed(2); }
+    },
+    itemStyle: { borderColor: "#020617", borderWidth: 3, borderRadius: 4 },
+    emphasis: { itemStyle: { shadowBlur: 12, shadowColor: "rgba(48,162,255,0.5)" } }
+  }]
+});
+  </script>
+</body>
+</html>

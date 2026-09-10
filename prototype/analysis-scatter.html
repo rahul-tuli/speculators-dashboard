@@ -1,0 +1,107 @@
+<!-- PROTOTYPE: throwaway design exploration for the Analysis section chart.
+     Question: does a scatter of acceptance length vs throughput surface the
+     "which drafter is actually best" story better than per-target aggregates? -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prototype: Analysis scatter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg: #020617; --surface: #0f172a; --text-1: #f8fafc; --text-2: #94a3b8;
+  --text-3: #64748b; --border: rgba(255,255,255,0.1); --blue: #30a2ff;
+  --sans: 'Inter', -apple-system, sans-serif; --mono: 'JetBrains Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text-1); line-height: 1.6; padding: 3rem 2rem; }
+.container { max-width: 72rem; margin: 0 auto; }
+.section-eyebrow { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--blue); margin-bottom: 0.875rem; }
+.section-title { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em; }
+.section-desc { color: var(--text-2); margin-top: 0.875rem; max-width: 40rem; }
+.section-head { margin-bottom: 2.5rem; }
+.chart-shell { border: 1px solid var(--border); border-radius: 1.25rem; background: var(--surface); padding: 1.5rem 1.5rem 1rem; }
+.chart-container { height: 440px; width: 100%; }
+.note { margin-top: 1rem; font-size: 0.8125rem; color: var(--text-3); font-family: var(--mono); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-eyebrow">Analysis</div>
+      <h2 class="section-title">Acceptance vs Throughput</h2>
+      <p class="section-desc">Every drafter as one point: acceptance length against measured throughput, colored by algorithm</p>
+    </div>
+    <div class="chart-shell"><div id="chart" class="chart-container"></div></div>
+    <p class="note">Prototype B: scatter. Top-right corner is the win zone; makes outlier drafters visible instead of hiding them in averages.</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script>
+var DATA = [
+  { model: "Llama-3.1-8B-Instruct-speculator.eagle3", algorithm: "eagle3", throughput: 4075, acceptance: 3.03, speedup: 2.71 },
+  { model: "Mellum2-12B-A2.5B-Thinking-speculator.dflash", algorithm: "dflash", throughput: 4061, acceptance: 2.80, speedup: null },
+  { model: "Qwen3-14B-speculator.eagle3", algorithm: "eagle3", throughput: 2164, acceptance: 2.40, speedup: 1.21 },
+  { model: "Qwen3-30B-A3B-Instruct-2507-speculator.dflash", algorithm: "dflash", throughput: 3044, acceptance: 2.83, speedup: null },
+  { model: "Qwen3-30B-A3B-Thinking-2507-speculator.eagle3", algorithm: "eagle3", throughput: 3166, acceptance: 3.28, speedup: null },
+  { model: "Qwen3-30B-A3B-speculator.dflash", algorithm: "dflash", throughput: 3195, acceptance: 3.01, speedup: null },
+  { model: "Qwen3-32B-Thinking-speculator.eagle3", algorithm: "eagle3", throughput: 3408, acceptance: 3.33, speedup: null },
+  { model: "Qwen3-8B-speculator.dflash", algorithm: "dflash", throughput: 3320, acceptance: 2.18, speedup: 1.02 },
+  { model: "Qwen3-8B-speculator.eagle3", algorithm: "eagle3", throughput: 3659, acceptance: 2.46, speedup: 1.12 },
+  { model: "Qwen3.6-35B-A3B-speculator.dspark", algorithm: "dspark", throughput: 3894, acceptance: 3.45, speedup: null },
+  { model: "gemma-4-31B-it-speculator.dflash", algorithm: "dflash", throughput: 849, acceptance: 3.42, speedup: null },
+  { model: "gemma-4-31B-it-speculator.eagle3", algorithm: "eagle3", throughput: 740, acceptance: 3.05, speedup: null },
+  { model: "gpt-oss-20b-speculator.eagle3", algorithm: "eagle3", throughput: 3104, acceptance: 2.19, speedup: 2.36 },
+  { model: "Laguna-XS.2-speculator.dflash", algorithm: "dflash", throughput: 834, acceptance: 2.52, speedup: null }
+];
+
+var ALGO_COLORS = { eagle3: "#3b82f6", dflash: "#f97316", peagle: "#a855f7", mtp: "#10b981", dspark: "#eab308" };
+var algos = [];
+DATA.forEach(function (d) { if (algos.indexOf(d.algorithm) < 0) algos.push(d.algorithm); });
+
+echarts.init(document.getElementById("chart"), "dark").setOption({
+  backgroundColor: "transparent",
+  textStyle: { fontFamily: "Inter, -apple-system, sans-serif" },
+  grid: { left: 10, right: 24, top: 40, bottom: 60, containLabel: true },
+  legend: { data: algos, bottom: 0, icon: "circle", itemWidth: 10, itemHeight: 10, textStyle: { color: "#94a3b8", fontSize: 12 } },
+  xAxis: {
+    type: "value", name: "Acceptance Length", nameLocation: "middle", nameGap: 28,
+    nameTextStyle: { color: "#64748b", fontSize: 11 },
+    splitLine: { lineStyle: { color: "rgba(255,255,255,0.05)" } },
+    axisLabel: { color: "#64748b", fontFamily: "JetBrains Mono, monospace", fontSize: 11 }
+  },
+  yAxis: {
+    type: "value", name: "Throughput (tok/s)",
+    nameTextStyle: { color: "#64748b", fontSize: 11 },
+    splitLine: { lineStyle: { color: "rgba(255,255,255,0.05)" } },
+    axisLabel: { color: "#64748b", fontFamily: "JetBrains Mono, monospace", fontSize: 11 }
+  },
+  tooltip: {
+    backgroundColor: "#0f172a", borderColor: "rgba(255,255,255,0.1)",
+    textStyle: { color: "#f8fafc", fontSize: 12 },
+    formatter: function (p) {
+      var d = p.data.meta;
+      var spd = d.speedup != null ? d.speedup.toFixed(2) + "x" : "n/a";
+      return "<b>" + d.model + "</b><br>" +
+        "throughput: " + d.throughput.toLocaleString() + " tok/s<br>" +
+        "acceptance: " + d.acceptance.toFixed(2) + "<br>" +
+        "speedup: " + spd;
+    }
+  },
+  series: algos.map(function (algo) {
+    return {
+      name: algo, type: "scatter", symbolSize: 14,
+      itemStyle: { color: ALGO_COLORS[algo], opacity: 0.85, borderColor: "#0f172a", borderWidth: 1.5 },
+      emphasis: { scale: 1.6, label: {
+        show: true, position: "top", color: "#f8fafc", fontSize: 10, fontFamily: "JetBrains Mono, monospace",
+        formatter: function (p) { return p.data.meta.model; }
+      } },
+      data: DATA.filter(function (d) { return d.algorithm === algo; })
+        .map(function (d) { return { value: [d.acceptance, d.throughput], meta: d }; })
+    };
+  })
+});
+  </script>
+</body>
+</html>
