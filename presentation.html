@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speculators Dashboard — Architecture</title>
+<style>
+  :root {
+    --ink: #14201c;
+    --soft: #55655f;
+    --accent: #2f6f5e;
+    --accent-bright: #3d8a75;
+    --paper: #f7f8f6;
+    --card: #ffffff;
+    --line: #dfe4e0;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    overflow: hidden;
+  }
+
+  .slide {
+    display: none;
+    height: 100vh;
+    padding: 6vh 8vw;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .slide.active { display: flex; }
+  .wrap { max-width: 60rem; margin: 0 auto; width: 100%; }
+
+  .kicker {
+    font-size: 0.8rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 0.9rem;
+  }
+  h1 { font-size: 3.2rem; line-height: 1.1; font-family: Georgia, serif; }
+  h2 { font-size: 2.1rem; line-height: 1.15; font-family: Georgia, serif; margin-bottom: 1.4rem; }
+  .sub { font-size: 1.25rem; color: var(--soft); margin-top: 1.1rem; max-width: 44rem; line-height: 1.5; }
+  p.body { font-size: 1.12rem; color: var(--soft); line-height: 1.6; max-width: 46rem; margin-bottom: 0.8rem; }
+
+  ul.points { list-style: none; padding: 0; margin-top: 0.5rem; }
+  ul.points li {
+    font-size: 1.12rem;
+    line-height: 1.5;
+    padding: 0.55rem 0 0.55rem 1.9rem;
+    position: relative;
+    color: var(--ink);
+  }
+  ul.points li::before {
+    content: "";
+    position: absolute;
+    left: 0.35rem; top: 1.05rem;
+    width: 0.55rem; height: 0.55rem;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  ul.points li b { color: var(--accent); }
+  ul.points li .dim { color: var(--soft); }
+
+  /* pipeline diagram */
+  .pipe { display: flex; align-items: stretch; gap: 0.6rem; margin: 1.6rem 0; }
+  .pipe .stage {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--accent);
+    border-radius: 10px;
+    padding: 1rem 1rem 1.1rem;
+  }
+  .pipe .stage .n {
+    font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em;
+    color: var(--accent); text-transform: uppercase; margin-bottom: 0.35rem;
+  }
+  .pipe .stage .t { font-weight: 700; font-size: 1.05rem; margin-bottom: 0.3rem; }
+  .pipe .stage .d { font-size: 0.88rem; color: var(--soft); line-height: 1.45; }
+  .pipe .arr { align-self: center; color: var(--accent); font-size: 1.5rem; font-weight: 800; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; margin-top: 0.6rem; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+    border-radius: 10px;
+    padding: 0.95rem 1.1rem;
+  }
+  .card .t { font-weight: 700; font-size: 1.02rem; margin-bottom: 0.25rem; }
+  .card .d { font-size: 0.9rem; color: var(--soft); line-height: 1.45; }
+  .card code, .mini {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.82em; background: #eef1ee; padding: 0.08em 0.35em; border-radius: 4px;
+  }
+
+  .vs { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.8rem; }
+  .vs .col {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1.1rem 1.2rem;
+  }
+  .vs .col h3 { font-size: 1.05rem; margin-bottom: 0.5rem; color: var(--accent); }
+  .vs .col ul { padding-left: 1.15rem; }
+  .vs .col li { font-size: 0.95rem; color: var(--soft); line-height: 1.55; margin-bottom: 0.35rem; }
+
+  .big-quote {
+    font-family: Georgia, serif;
+    font-size: 1.7rem;
+    line-height: 1.4;
+    max-width: 46rem;
+  }
+  .big-quote em { color: var(--accent); font-style: normal; }
+
+  /* chrome */
+  .hud {
+    position: fixed; bottom: 1.1rem; left: 0; right: 0;
+    display: flex; justify-content: space-between;
+    padding: 0 1.4rem;
+    font-size: 0.8rem; color: var(--soft);
+    pointer-events: none;
+  }
+  .bar { position: fixed; top: 0; left: 0; height: 4px; background: var(--accent); transition: width 0.25s; }
+
+  @media print {
+    body { overflow: visible; }
+    .slide { display: flex !important; height: auto; min-height: 90vh; page-break-after: always; }
+    .hud, .bar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar" id="bar"></div>
+
+<!-- 1 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Team walkthrough</div>
+    <h1>The Speculators Dashboard</h1>
+    <p class="sub">How a new model release on HuggingFace becomes a benchmark row on a website — with agents doing the chores and almost no human in the loop.</p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">What it is</div>
+    <h2>A self-updating leaderboard for speculative decoding</h2>
+    <ul class="points">
+      <li>We publish <b>speculator models</b> <span class="dim">— small "draft" models that speed up LLM inference in vLLM.</span></li>
+      <li>Every model in our HuggingFace collection gets <b>benchmarked on real GPUs</b>: acceptance rate, throughput, speedup vs. the base model.</li>
+      <li>Results land on a <b>public dashboard</b> <span class="dim">— a static site, no backend, no database.</span></li>
+      <li>The whole system is <b>git + GitHub</b>: issues are the queue, a JSON file is the database, pushes are the deploy.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">The big picture</div>
+    <h2>Four stages, release to dashboard</h2>
+    <div class="pipe">
+      <div class="stage">
+        <div class="n">1 · Detect</div>
+        <div class="t">Daily watcher</div>
+        <div class="d">A GitHub Action scans our HuggingFace collection every day and files one issue per new or updated model.</div>
+      </div>
+      <div class="arr">→</div>
+      <div class="stage">
+        <div class="n">2 · Prepare</div>
+        <div class="t">Deploy agent</div>
+        <div class="d">An agent reads each model card and posts a ready-to-run serving command on the issue.</div>
+      </div>
+      <div class="arr">→</div>
+      <div class="stage">
+        <div class="n">3 · Execute</div>
+        <div class="t">GPU eval</div>
+        <div class="d">A scheduled runner claims issues, provisions a GPU pod, serves the model, and runs the benchmark.</div>
+      </div>
+      <div class="arr">→</div>
+      <div class="stage">
+        <div class="n">4 · Publish</div>
+        <div class="t">Static site</div>
+        <div class="d">The runner commits the results file; the push redeploys the dashboard on GitHub Pages.</div>
+      </div>
+    </div>
+    <p class="body">The hand-off between every stage is a plain artifact anyone can inspect: a GitHub issue, an issue comment, a JSON file, a git commit.</p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Component · the website</div>
+    <h2>One static page, one data file</h2>
+    <ul class="points">
+      <li><b>Single HTML file</b> on GitHub Pages — no build step, no server, no framework.</li>
+      <li>On load it fetches <b>results.json</b> <span class="dim">— the one file the pipeline ever writes.</span></li>
+      <li>Renders stat cards, per-hardware tabs, filters, a sortable table, and expandable rows <span class="dim">(deploy command + detailed metrics per benchmark subset).</span></li>
+      <li>Charts come from a CDN library; the page works the same locally with <span class="mini">make serve</span>.</li>
+    </ul>
+    <p class="body">Because the site only reads one committed file, "the website updated" and "a benchmark finished" are the same event.</p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Component · the watcher</div>
+    <h2>A GitHub Action files the work</h2>
+    <ul class="points">
+      <li>Runs <b>daily on a cron</b> (or on demand) in GitHub Actions — this is the only part that lives in CI.</li>
+      <li>Reads the HuggingFace collection, pulls each model's config: <b>algorithm, target model, size, GPU needs</b>.</li>
+      <li>Diffs against <b>results.json</b> <span class="dim">— a model whose upstream files changed gets re-evaluated automatically.</span></li>
+      <li>Files one issue per model: <b>"Eval: &lt;model&gt;"</b>, labeled <span class="mini">eval:pending</span> <span class="dim">— idempotent, never duplicates.</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Component · the queue</div>
+    <h2>GitHub issues are the state machine</h2>
+    <div class="pipe" style="margin-top: 0.5rem;">
+      <div class="stage"><div class="n">Queued</div><div class="t">eval:pending</div><div class="d">Filed by the watcher. Sizing unknown? Also flagged for triage.</div></div>
+      <div class="arr">→</div>
+      <div class="stage"><div class="n">Claimed</div><div class="t">eval:running</div><div class="d">A runner picked it up — no double-runs.</div></div>
+      <div class="arr">→</div>
+      <div class="stage"><div class="n">Closed</div><div class="t">eval:done</div><div class="d">Metrics committed, summary posted as a comment.</div></div>
+    </div>
+    <ul class="points">
+      <li>Failures become <b>eval:failed</b> with the log tail attached <span class="dim">— and get exactly one automatic retry.</span></li>
+      <li><b>No queue service, no database.</b> <span class="dim">The open-issue list is a live view of the whole pipeline — anyone can see what's running, done, or stuck.</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Component · the agents</div>
+    <h2>Agents do the remaining chores</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="t">deploy-commands</div>
+        <div class="d">Reads each pending model's card and the vLLM recipe catalog, then posts a <b>ready-to-run serving command</b> as a comment on its issue — sources included.</div>
+      </div>
+      <div class="card">
+        <div class="t">run-evals</div>
+        <div class="d">Works the pending queue on the cluster <b>one model at a time</b>: spins up a GPU pod via devenv, runs the benchmark, tears the pod down, files the result.</div>
+      </div>
+      <div class="card">
+        <div class="t">run-evals-manual</div>
+        <div class="d">For when we <b>already have a GPU box</b>: skips the cluster entirely and packs evals across the free GPUs — <b>in parallel</b>.</div>
+      </div>
+      <div class="card">
+        <div class="t">Same queue, same result</div>
+        <div class="d">However an eval runs, it ends the same way: metrics written to results.json, committed, pushed, issue closed. Fully interchangeable.</div>
+      </div>
+    </div>
+    <p class="body">Agents are playbooks a person kicks off — the truly unattended pieces are just the daily watcher and the 30-minute runner.</p>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Component · the runner</div>
+    <h2>Every 30 minutes, one eval, unattended</h2>
+    <ul class="points">
+      <li>A <b>scheduler on a cluster-connected machine</b> wakes every half hour and claims the next pending issue.</li>
+      <li>Provisions a <b>disposable GPU pod</b> on OpenShift via devenv <span class="dim">— right-sized to the model.</span></li>
+      <li>Inside the pod: <b>vLLM serves the model, the benchmark sweep runs</b> <span class="dim">(acceptance length, throughput, latency).</span></li>
+      <li>Results are normalized into <b>results.json</b> — speedup computed against a stored baseline — then committed and pushed.</li>
+      <li>The pod is <b>always torn down</b>; a sweeper kills anything older than 4 hours.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Two ways to run</div>
+    <h2>Steady-state vs. "we have GPUs now"</h2>
+    <div class="vs">
+      <div class="col">
+        <h3>Automated — default</h3>
+        <ul>
+          <li>Unattended, every 30 minutes</li>
+          <li>Cluster pods via devenv</li>
+          <li>One model at a time, safely serialized</li>
+          <li>Retries failures once, then flags for a human</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3>Manual — on demand</h3>
+        <ul>
+          <li>An agent session you start on a GPU server</li>
+          <li>No cluster needed — uses the local GPUs directly</li>
+          <li>Parallel: several models evaluated at once</li>
+          <li>Ideal for clearing a backlog before a release</li>
+        </ul>
+      </div>
+    </div>
+    <p class="body">Both read from the same issue queue and write through the same path — you can mix them freely.</p>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Why it's built this way</div>
+    <p class="big-quote">No database, no queue, no backend — <em>git is the database, issues are the queue, and a push is the deploy.</em></p>
+    <ul class="points" style="margin-top: 1.4rem;">
+      <li><b>Every step is idempotent</b> <span class="dim">— safe to retry, safe to re-run, nothing duplicates.</span></li>
+      <li><b>State is always visible</b> <span class="dim">— the issue list shows the pipeline; git history shows every result change.</span></li>
+      <li><b>Compute is disposable</b> <span class="dim">— pods exist for one eval, then they're gone.</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <div class="wrap">
+    <div class="kicker">Questions?</div>
+    <h2>Where to look</h2>
+    <div class="cards">
+      <div class="card"><div class="t">The dashboard</div><div class="d"><code>site/index.html</code> + <code>results.json</code> — the whole front end and its data.</div></div>
+      <div class="card"><div class="t">The watcher</div><div class="d"><code>.github/workflows/poll-hf.yml</code> → <code>pipeline/discover.py</code></div></div>
+      <div class="card"><div class="t">The runner</div><div class="d"><code>pipeline/cron_eval.sh</code> → <code>pipeline/orchestrate.py</code></div></div>
+      <div class="card"><div class="t">The agents</div><div class="d"><code>.claude/skills/</code> — deploy-commands, run-evals, run-evals-manual</div></div>
+    </div>
+    <p class="body" style="margin-top: 1.4rem;">Live site: <b>rahul-tuli.github.io/speculators-dashboard</b></p>
+  </div>
+</section>
+
+<div class="hud">
+  <span>← → to navigate · P to print</span>
+  <span id="counter"></span>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var i = 0;
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function (s, k) { s.classList.toggle('active', k === i); });
+    document.getElementById('counter').textContent = (i + 1) + ' / ' + slides.length;
+    document.getElementById('bar').style.width = ((i + 1) / slides.length * 100) + '%';
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') show(i + 1);
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') show(i - 1);
+    if (e.key === 'Home') show(0);
+    if (e.key === 'End') show(slides.length - 1);
+    if (e.key === 'p' || e.key === 'P') window.print();
+  });
+  document.addEventListener('click', function () { show(i + 1); });
+  show(0);
+</script>
+</body>
+</html>
